@@ -66,7 +66,7 @@ enum {
 };
 
 
-struct __attribute__ ((__packed__)) vmcb_control_area {
+struct vmcb_control_area {
 	uint16_t intercept_cr_read;
 	uint16_t intercept_cr_write;
 	uint16_t intercept_dr_read;
@@ -98,7 +98,7 @@ struct __attribute__ ((__packed__)) vmcb_control_area {
 	uint64_t nested_cr3;
 	uint64_t lbr_ctl;
 	uint8_t reserved_5[832];
-};
+} __attribute__ ((__packed__));
 
 
 #define TLB_CONTROL_DO_NOTHING 0
@@ -131,14 +131,14 @@ struct __attribute__ ((__packed__)) vmcb_control_area {
 #define SVM_IOIO_SIZE_MASK (7 << SVM_IOIO_SIZE_SHIFT)
 #define SVM_IOIO_ASIZE_MASK (7 << SVM_IOIO_ASIZE_SHIFT)
 
-struct __attribute__ ((__packed__)) vmcb_seg {
+struct vmcb_seg {
 	uint16_t selector;
 	uint16_t attrib;
 	uint32_t limit;
 	uint64_t base;
-};
+} __attribute__ ((__packed__));
 
-struct __attribute__ ((__packed__)) vmcb_save_area {
+struct vmcb_save_area {
 	struct vmcb_seg es;
 	struct vmcb_seg cs;
 	struct vmcb_seg ss;
@@ -181,12 +181,12 @@ struct __attribute__ ((__packed__)) vmcb_save_area {
 	uint64_t br_to;
 	uint64_t last_excp_from;
 	uint64_t last_excp_to;
-};
+} __attribute__ ((__packed__));
 
-struct __attribute__ ((__packed__)) vmcb {
+struct vmcb {
 	struct vmcb_control_area control;
 	struct vmcb_save_area save;
-};
+} __attribute__ ((__packed__));
 
 #define SVM_CPUID_FEATURE_SHIFT 2
 #define SVM_CPUID_FUNC 0x8000000a
@@ -346,5 +346,5 @@ struct __attribute__ ((__packed__)) vmcb {
 #define SVM_ALLOC_IOPM_SIZE 16384
 
 
-#endif /* __KVM_SVM_H__
+#endif /* __KVM_SVM_H__ */
 

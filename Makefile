@@ -3,15 +3,15 @@
 #
 
 # Use the gcc compiler and Sun linker.
-KERNEL_SOURCE=$(PWD)/../../illumos
-PROTO_AREA=$(PWD)/../../../proto
-CC=gcc -m64 -mcmodel=kernel
+KERNEL_SOURCE=/ws/illumos-gate
+PROTO_AREA=/ws/illumos-kvm-proto
+CC=gcc -m64 -mcmodel=kernel -msave-args
 LD=/usr/bin/ld
 CTFBINDIR=$(KERNEL_SOURCE)/usr/src/tools/proto/*/opt/onbld/bin/i386
 CTFCONVERT=$(CTFBINDIR)/ctfconvert
 CTFMERGE=$(CTFBINDIR)/ctfmerge
 DESTDIR=
-CFLAGS += -D_KERNEL -D_MACHDEP -Dx86 -DDEBUG -c -g -DCONFIG_SOLARIS -O2 -fident -fno-inline -fno-inline-functions -fno-builtin -fno-asm -nodefaultlibs -D__sun -O -D_ASM_INLINES -ffreestanding -Wall -Wno-unknown-pragmas -Wpointer-arith -Wno-unused -gdwarf-2 -std=gnu99 -fno-dwarf2-indirect-strings -Werror -DDIS_MEM -D_KERNEL -ffreestanding -D_SYSCALL32 -D_DDI_STRICT -Di86pc -D_MACHDEP -DOPTERON_ERRATUM_88 -DOPTERON_ERRATUM_91 -DOPTERON_ERRATUM_93 -DOPTERON_ERRATUM_95 -DOPTERON_ERRATUM_99 -DOPTERON_ERRATUM_100 -DOPTERON_ERRATUM_101 -DOPTERON_ERRATUM_108 -DOPTERON_ERRATUM_109 -DOPTERON_ERRATUM_121 -DOPTERON_ERRATUM_122 -DOPTERON_ERRATUM_123 -DOPTERON_ERRATUM_131 -DOPTERON_WORKAROUND_6336786 -DOPTERON_WORKAROUND_6323525 -DOPTERON_ERRATUM_172 -DOPTERON_ERRATUM_298 -I$(KERNEL_SOURCE)/usr/src/uts/common -nostdinc -c -DUTS_RELEASE="5.11" -DUTS_VERSION="joyent.147" -DUTS_PLATFORM="i86pc" -mno-red-zone
+CFLAGS += -D_KERNEL -D_MACHDEP -Dx86 -DDEBUG -c -g -DCONFIG_SOLARIS -O0 -fident -fno-inline -fno-inline-functions -fno-builtin -fno-asm -nodefaultlibs -D__sun -O0 -D_ASM_INLINES -ffreestanding -Wall -Wno-unknown-pragmas -Wpointer-arith -Wno-unused -gdwarf-2 -std=gnu99 -fno-dwarf2-indirect-strings -Werror -DDIS_MEM -D_KERNEL -ffreestanding -D_SYSCALL32 -D_DDI_STRICT -Di86pc -D_MACHDEP -DOPTERON_ERRATUM_88 -DOPTERON_ERRATUM_91 -DOPTERON_ERRATUM_93 -DOPTERON_ERRATUM_95 -DOPTERON_ERRATUM_99 -DOPTERON_ERRATUM_100 -DOPTERON_ERRATUM_101 -DOPTERON_ERRATUM_108 -DOPTERON_ERRATUM_109 -DOPTERON_ERRATUM_121 -DOPTERON_ERRATUM_122 -DOPTERON_ERRATUM_123 -DOPTERON_ERRATUM_131 -DOPTERON_WORKAROUND_6336786 -DOPTERON_WORKAROUND_6323525 -DOPTERON_ERRATUM_172 -DOPTERON_ERRATUM_298 -I$(KERNEL_SOURCE)/usr/src/uts/common -nostdinc -c -DUTS_RELEASE="5.11" -DUTS_VERSION="joyent.147" -DUTS_PLATFORM="i86pc" -mno-red-zone
 
 INCLUDEDIR= -I $(KERNEL_SOURCE)/usr/src/uts/intel -I $(KERNEL_SOURCE)/usr/src/uts/i86pc -I $(KERNEL_SOURCE)/usr/src/uts/common
 CSTYLE=$(KERNEL_SOURCE)/usr/src/tools/scripts/cstyle
@@ -111,7 +111,7 @@ kvm.so: kvm_mdb.c
 	    -fPIC $(CFLAGS) $(INCLUDEDIR) -I/usr/include -o $@ kvm_mdb.c
 
 JOY_kvm_link.so: kvm_link.c
-	/opt/SUNWspro/bin/cc -O -xspace -Xa  -xildoff -errtags=yes -errwarn=%all -erroff=E_EMPTY_TRANSLATION_UNIT -erroff=E_STATEMENT_NOT_REACHED -xc99=%none    -W0,-xglobalstatic -v -K pic -DTEXT_DOMAIN=\"SUNW_OST_OSCMD\" -D_TS_ERRNO -D_POSIX_PTHREAD_SEMANTICS -D_REENTRANT -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/ -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../../uts/common -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../modload -c -o  kvm_link.o kvm_link.c		
+	/opt/SUNWspro/bin/cc -O0 -xspace -Xa  -xildoff -errtags=yes -errwarn=%all -erroff=E_EMPTY_TRANSLATION_UNIT -erroff=E_STATEMENT_NOT_REACHED -xc99=%none    -W0,-xglobalstatic -v -K pic -DTEXT_DOMAIN=\"SUNW_OST_OSCMD\" -D_TS_ERRNO -D_POSIX_PTHREAD_SEMANTICS -D_REENTRANT -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/ -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../../uts/common -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../modload -c -o  kvm_link.o kvm_link.c		
 	/opt/SUNWspro/bin/cc -o JOY_kvm_link.so -G -ztext -zdefs -Bdirect -M$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/mapfile-vers -M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.pagealign -M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.noexdata -h JOY_kvm_link.so kvm_link.o -L$(PROTO_AREA)/lib -L$(PROTO_AREA)/usr/lib -ldevinfo -lc
 
 install: kvm
@@ -135,5 +135,5 @@ clean:
 uninstall:
 	@pfexec rem_drv kvm || /bin/true
 	@pfexec rm -f /usr/kernel/drv/kvm* /usr/kernel/drv/amd64/kvm*
-# gcc -m64 -mcmodel=kernel -D_KERNEL -D_MACHDEP -Dx86 -DCONFIG_X86_64 -DDEBUG -c -O -g -I /wd320/max/onnv.121/usr/src/uts/intel -I /wd320/max/onnv.121/usr/src/uts/i86pc kvm.c
-# gcc -m64 -mcmodel=kernel -D_KERNEL -D_MACHDEP -Dx86 -DCONFIG_X86_64 -DDEBUG -c -O -g -I /wd320/max/onnv.121/usr/src/uts/intel -I /wd320/max/onnv.121/usr/src/uts/i86pc kvm_x86.c
+# gcc -m64 -mcmodel=kernel -D_KERNEL -D_MACHDEP -Dx86 -DCONFIG_X86_64 -DDEBUG -c -O0 -g -I /wd320/max/onnv.121/usr/src/uts/intel -I /wd320/max/onnv.121/usr/src/uts/i86pc kvm.c
+# gcc -m64 -mcmodel=kernel -D_KERNEL -D_MACHDEP -Dx86 -DCONFIG_X86_64 -DDEBUG -c -O0 -g -I /wd320/max/onnv.121/usr/src/uts/intel -I /wd320/max/onnv.121/usr/src/uts/i86pc kvm_x86.c
