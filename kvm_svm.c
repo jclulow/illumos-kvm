@@ -2434,6 +2434,24 @@ svm_complete_interrupts(struct vcpu_svm *svm)
 
 extern int tdebug;
 
+static unsigned long __force_order;
+
+unsigned long
+native_read_cr2(void)
+{
+        unsigned long val;
+        __asm__ volatile("mov %%cr2,%0\n\t" : "=r" (val), "=m" (__force_order));
+        return (val);
+}
+
+unsigned long
+native_read_cr8(void)
+{
+        unsigned long val;
+        __asm__ volatile("mov %%cr8,%0\n\t" : "=r" (val), "=m" (__force_order));
+        return (val);
+}
+
 static void
 svm_vcpu_run(struct kvm_vcpu *vcpu)
 {
@@ -2442,7 +2460,11 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	uint16_t gs_selector;
 	uint16_t ldt_selector;
 
-	cmn_err(CE_NOTE, "kvm: TOP %s vcpu %p", __func__, vcpu);
+	/* XXX DEBUG */ unsigned long PRE_cr2 = native_read_cr2();
+	/* XXX DEBUG */ unsigned long PRE_cr8 = native_read_cr8();
+
+	cmn_err(CE_NOTE, "kvm: TOP %s cr8 %lx cr2 %lx vcpu %p",
+	    __func__, PRE_cr8, PRE_cr2, vcpu);
 	/*  XXX DEBUG traps... tdebug = 1; */
 
 	svm->vmcb->save.rax = vcpu->arch.regs[VCPU_REGS_RAX];
@@ -2469,6 +2491,9 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	/* maybe sti() would work instead? */
 
 	__asm__ volatile (
+		"push %%rcx; \n\t"
+		"mov  %%cr2,%%rcx; \n\t"
+		"push %%rcx; \n\t"
 		"push %%rbp; \n\t"
 		"mov %c[rbx](%[svm]), %%rbx \n\t"
 		"mov %c[rcx](%[svm]), %%rcx \n\t"
@@ -2509,6 +2534,9 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 		"mov %%r14, %c[r14](%[svm]) \n\t"
 		"mov %%r15, %c[r15](%[svm]) \n\t"
 		"pop %%rbp \n\t"
+		"pop %%rcx \n\t"
+		"mov %%rcx,%%cr2; \n\t"
+		"pop %%rcx \n\t"
 		:
 		: [svm]"a"(svm),
 		  [vmcb]"i"(offsetof(struct vcpu_svm, vmcb_pa)),
@@ -2559,9 +2587,10 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	}
 
 	/* XXX random guess: */
-	__asm__("mov %0, %%ds; mov %0, %%es" : : "r"KDS_SEL);
+	/* __asm__("mov %0, %%ds; mov %0, %%es" : : "r"KDS_SEL); */
 
-	cmn_err(CE_NOTE, "kvm: END %s vcpu %p", __func__, vcpu);
+	cmn_err(CE_NOTE, "kvm: END %s cr8 %lx cr2 %lx vcpu %p",
+	   __func__, native_read_cr8(), native_read_cr2(), vcpu);
 }
 
 static void

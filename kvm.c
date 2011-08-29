@@ -1942,16 +1942,34 @@ kvm_close(dev_t dev, int flag, int otyp, cred_t *cred)
 static void
 __print_reg_vals(void)
 {
-        unsigned int cs, gs, fs, ss;
+        unsigned int cs, gs, fs, ss, es, ds;
 	struct regs *rp = (struct regs *) (ttolwp(curthread)->lwp_regs);
+	struct descriptor_table gdt, idt;
+
+	unsigned long long gsbase, fsbase, kernelgsbase;
+
+	fsbase = read_msr(MSR_FS_BASE);
+	gsbase = read_msr(MSR_GS_BASE);
+	kernelgsbase = read_msr(MSR_KERNEL_GS_BASE);
 
         __asm__ volatile ("mov %%cs, %0\n" : "=r"(cs));
         __asm__ volatile ("mov %%gs, %0\n" : "=r"(gs));
         __asm__ volatile ("mov %%fs, %0\n" : "=r"(fs));
         __asm__ volatile ("mov %%ss, %0\n" : "=r"(ss));
+        __asm__ volatile ("mov %%es, %0\n" : "=r"(ss));
+        __asm__ volatile ("mov %%ds, %0\n" : "=r"(ss));
 
-	cmn_err(CE_NOTE, "kvm: REGS %p REGISTERS %%cs %x %%gs %x %%fs %x %%ss %x",
-	    rp, cs, gs, fs, ss);
+	kvm_get_idt(&idt);
+	kvm_get_gdt(&gdt);
+
+	cmn_err(CE_NOTE, "kvm: STRUCT REGS %p REGISTERS\n"
+	    "\tgsbase %llx fsbase %llx swapgs %llx\n"
+	    "\t%%cs %x %%gs %x %%fs %x %%ss %x %%es %x %%ds %x\n"
+	    "\t%%gdtr %lx:%x %%idtr %lx:%x",
+	    rp,
+	    gsbase, fsbase, kernelgsbase,
+	    cs, gs, fs, ss, es, ds,
+	    gdt.base, gdt.limit, idt.base, idt.limit);
 }
 
 static int
@@ -1962,6 +1980,9 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 	kvm_devstate_t *ksp;
 	void *argp = (void *)arg;
 	struct kvm_pit_config pit;
+
+	/* XXX DEBUG? */
+	unsigned long long OLD_fsbase = read_msr(MSR_FS_BASE);
 
 	cmn_err(CE_NOTE, "kvm: %s cmd %d", __func__, cmd);
 	__print_reg_vals();
@@ -2074,9 +2095,17 @@ kvm_ioctl(dev_t dev, int cmd, intptr_t arg, int md, cred_t *cr, int *rv)
 
 		kmem_free(buf, ioctl->size);
 
+		/* XXX DEBUG? */
+		wrmsrl(MSR_FS_BASE, OLD_fsbase);
+
 		cmn_err(CE_NOTE, "kvm: %s return from tab = %d", __func__,
 		    (rval < 0 ? -rval : rval));
 		__print_reg_vals();
+
+/* XXX
+		if (rval == 0 && cmd == 536915584)
+			debug_enter("JESUS CHRIST"); */
+
 		return (rval < 0 ? -rval : rval);
 	}
 
