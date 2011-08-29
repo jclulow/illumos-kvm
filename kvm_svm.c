@@ -861,8 +861,6 @@ svm_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	int i;
 	uint64_t tsc_this, delta, new_offset;
 
-	cmn_err(CE_NOTE, "kvm: %s", __func__);
-
 	if (cpu != vcpu->cpu) {
 		vcpu->cpu = cpu;
 		/* kvm_migrate_timers(vcpu); */
@@ -882,9 +880,6 @@ svm_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 
 	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
 		rdmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
-		if (host_save_user_msrs[i] == MSR_KERNEL_GS_BASE) {
-			cmn_err(CE_NOTE, "kvm: vcpu_load KERNEL_GS_BASE was %lx", svm->host_user_msrs[i]);
-		}
 	}
 }
 
@@ -893,8 +888,6 @@ svm_vcpu_put(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_svm *svm = to_svm(vcpu);
 	int i;
-
-	cmn_err(CE_NOTE, "kvm: %s", __func__);
 
 	/* XXX: Where are the stats?
 	    ++vcpu->stat.host_state_reload; */
@@ -1938,8 +1931,6 @@ wrmsr_interception(struct vcpu_svm *svm)
 	uint64_t data = (svm->vcpu.arch.regs[VCPU_REGS_RAX] & -1u)
 		| ((uint64_t)(svm->vcpu.arch.regs[VCPU_REGS_RDX] & -1u) << 32);
 
-	cmn_err(CE_NOTE, "kvm: %s ecx %x data %lx", __func__, ecx, data);
-
 	svm->next_rip = kvm_rip_read(&svm->vcpu) + 2;
 	if (svm_set_msr(&svm->vcpu, ecx, data)) {
 #if 0
@@ -2128,22 +2119,6 @@ handle_exit(struct kvm_vcpu *vcpu)
 	const char *xx = NULL;
 
 /* ROGER */
-	
-	for (;;++i) {
-		if (i > 1000) {
-			cmn_err(CE_WARN, "SHOULD NOT GET HERE\n");
-			break;
-		}
-		if (svm_exit_reasons_str[i].mask == -1)
-			break;
-		if (svm_exit_reasons_str[i].mask == exit_code) {
-			xx = svm_exit_reasons_str[i].name;
-			break;
-		}
-	}
-	if (xx == NULL)
-		xx = "UNKNOWN";
-	cmn_err(CE_NOTE, "kvm: handle_exit code %x (%s)\n", exit_code, xx);
 
 #if 0
 	trace_kvm_exit(exit_code, svm->vmcb->save.rip);
@@ -2462,13 +2437,6 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	uint16_t gs_selector;
 	uint16_t ldt_selector;
 
-	/* XXX DEBUG */ unsigned long PRE_cr2 = native_read_cr2();
-	/* XXX DEBUG */ unsigned long PRE_cr8 = native_read_cr8();
-
-	cmn_err(CE_NOTE, "kvm: TOP %s cr8 %lx cr2 %lx vcpu %p",
-	    __func__, PRE_cr8, PRE_cr2, vcpu);
-	/*  XXX DEBUG traps... tdebug = 1; */
-
 	svm->vmcb->save.rax = vcpu->arch.regs[VCPU_REGS_RAX];
 	svm->vmcb->save.rsp = vcpu->arch.regs[VCPU_REGS_RSP];
 	svm->vmcb->save.rip = vcpu->arch.regs[VCPU_REGS_RIP];
@@ -2588,11 +2556,6 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 		vcpu->arch.regs_dirty &= ~(1 << VCPU_EXREG_PDPTR);
 	}
 
-	/* XXX random guess: */
-	/* __asm__("mov %0, %%ds; mov %0, %%es" : : "r"KDS_SEL); */
-
-	cmn_err(CE_NOTE, "kvm: END %s cr8 %lx cr2 %lx vcpu %p",
-	   __func__, native_read_cr8(), native_read_cr2(), vcpu);
 }
 
 static void
