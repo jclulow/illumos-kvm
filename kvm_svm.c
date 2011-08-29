@@ -80,10 +80,8 @@ static uint64_t *vmxarea_pa;   /* physical address of each vmxarea */
 #define DEBUGCTL_RESERVED_BITS (~(0x3fULL))
 
 static const uint32_t host_save_user_msrs[] = {
-#ifdef CONFIG_X86_64
 	MSR_STAR, MSR_LSTAR, MSR_CSTAR, MSR_SYSCALL_MASK, MSR_KERNEL_GS_BASE,
 	MSR_FS_BASE,
-#endif
 	MSR_IA32_SYSENTER_CS, MSR_IA32_SYSENTER_ESP, MSR_IA32_SYSENTER_EIP,
 };
 
@@ -112,12 +110,7 @@ typedef struct vcpu_svm {
 	char nmi_singlestep;
 } vcpu_svm_t;
 
-/* enable NPT for AMD64 and X86 with PAE */
-#if defined(CONFIG_X86_64) || defined(CONFIG_X86_PAE)
-static char npt_enabled = 1;
-#else
-static char npt_enabled = 0;
-#endif
+static char npt_enabled = 1; /* XXX was for x64 or x86+PAE */
 static int npt = 1;
 
 /* module_param(npt, int, S_IRUGO); */
@@ -868,6 +861,8 @@ svm_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	int i;
 	uint64_t tsc_this, delta, new_offset;
 
+	cmn_err(CE_NOTE, "kvm: %s", __func__);
+
 	if (cpu != vcpu->cpu) {
 		vcpu->cpu = cpu;
 		/* kvm_migrate_timers(vcpu); */
@@ -885,8 +880,12 @@ svm_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 		}
 	}
 
-	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++)
+	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
 		rdmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
+		if (host_save_user_msrs[i] == MSR_KERNEL_GS_BASE) {
+			cmn_err(CE_NOTE, "kvm: vcpu_load KERNEL_GS_BASE was %lx", svm->host_user_msrs[i]);
+		}
+	}
 }
 
 static void
@@ -895,10 +894,13 @@ svm_vcpu_put(struct kvm_vcpu *vcpu)
 	struct vcpu_svm *svm = to_svm(vcpu);
 	int i;
 
+	cmn_err(CE_NOTE, "kvm: %s", __func__);
+
 	/* XXX: Where are the stats?
 	    ++vcpu->stat.host_state_reload; */
-	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++)
+	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
 		wrmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
+	}
 
 	rdtscll(vcpu->arch.host_tsc);
 }
