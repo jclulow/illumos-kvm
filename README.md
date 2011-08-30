@@ -1,3 +1,16 @@
+illumos-kvm + AMD-V support
+===========================
+
+NB: Work-in-progress repository for AMD-V support.  Presently the module will
+load on my single CPU HP Microserver, and I can boot an OpenBSD 4.7 VM for a while.
+There are still issues, this may set fire to your cat, etc.  Working on it!
+
+Also, the dtrace stuff is not there yet, nor are the kstats.  Probably need to
+preserve more state before/after a VMENTER/#VMEXIT.  You know how these things go.
+
+  -- Joshua M. Clulow (freenode: LeftWing)
+     <josh@sysmgr.org>
+
 illumos-kvm: KVM for illumos
 ============================
 
