@@ -652,8 +652,6 @@ kvm_enable_efer_bits(uint64_t mask)
 int
 kvm_set_msr(struct kvm_vcpu *vcpu, uint32_t msr_index, uint64_t data)
 {
-	cmn_err(CE_NOTE, "%s vcpu %p msr_index %x data %lx",
-	    __func__, vcpu, msr_index, data);
 	return (kvm_x86_ops->set_msr(vcpu, msr_index, data));
 }
 
@@ -3375,8 +3373,6 @@ vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	int req_int_win = !irqchip_in_kernel(vcpu->kvm) &&
 	    vcpu->run->request_interrupt_window;
 
-	cmn_err(CE_NOTE, "kvm: TOP %s vcpu %p", __func__, vcpu);
-
 	if (vcpu->requests) {
 		if (test_and_clear_bit(KVM_REQ_MMU_RELOAD, &vcpu->requests))
 			kvm_mmu_unload(vcpu);
@@ -3488,7 +3484,6 @@ vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	r = kvm_x86_ops->handle_exit(vcpu);
 
 out:
-	cmn_err(CE_NOTE, "kvm: OUT %s vcpu %p r %d", __func__, vcpu, r);
 	return (r);
 }
 
@@ -3497,8 +3492,6 @@ __vcpu_run(struct kvm_vcpu *vcpu)
 {
 	int r;
 	struct kvm *kvm = vcpu->kvm;
-
-	cmn_err(CE_NOTE, "kvm: TOP %s vcpu %p", __func__, vcpu);
 
 	if (vcpu->arch.mp_state == KVM_MP_STATE_SIPI_RECEIVED) {
 		cmn_err(CE_NOTE, "vcpu %d received sipi with vector # %x\n",
@@ -3568,7 +3561,6 @@ __vcpu_run(struct kvm_vcpu *vcpu)
 	post_kvm_run_save(vcpu);
 	vapic_exit(vcpu);
 
-	cmn_err(CE_NOTE, "kvm: OUT %s vcpu %p r %d", __func__, vcpu, r);
 	return (r);
 }
 
@@ -3578,8 +3570,6 @@ kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 	int r;
 	sigset_t sigsaved;
 	struct kvm_run *kvm_run = vcpu->run;
-
-	cmn_err(CE_NOTE, "kvm: TOP %s vcpu %p", __func__, vcpu);
 
 	vcpu_load(vcpu);
 
@@ -3630,7 +3620,6 @@ out:
 
 	vcpu_put(vcpu);
 
-	cmn_err(CE_NOTE, "kvm: OUT %s vcpu %p r %d", __func__, vcpu, r);
 	return (r);
 }
 
