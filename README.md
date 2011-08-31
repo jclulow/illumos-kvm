@@ -2,11 +2,13 @@ illumos-kvm + AMD-V support
 ===========================
 
 NB: Work-in-progress repository for AMD-V support.  Presently the module will
-load on my single CPU HP Microserver, and I can boot an OpenBSD 4.7 VM for a while.
-There are still issues, this may set fire to your cat, etc.  Working on it!
+load on my HP Microserver, and I can boot an OpenBSD/amd64 4.9 VM.  There are
+remarkably few issues at this stage, but it may set fire to your cat, etc.
+Working on it, testers encouraged!
 
-Also, the dtrace stuff is not there yet, nor are the kstats.  Probably need to
-preserve more state before/after a VMENTER/#VMEXIT.  You know how these things go.
+The kstats stuff is not done yet.  I am probably over-preserving state
+before/after a VMRUN/#VMEXIT in the name of stability-over-performance.  Will
+correct in time.
 
   -- Joshua M. Clulow (freenode: LeftWing)
      <josh@sysmgr.org>

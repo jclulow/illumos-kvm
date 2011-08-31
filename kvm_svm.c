@@ -1320,10 +1320,9 @@ pf_interception(struct vcpu_svm *svm)
 	fault_address  = svm->vmcb->control.exit_info_2;
 	error_code = svm->vmcb->control.exit_info_1;
 
-#if 0
-	trace_kvm_page_fault(fault_address, error_code);
-#endif
-	/* XXX Insert dtrace business here */
+	KVM_TRACE2(page__fault, uintptr_t, fault_address,
+	    uint32_t, error_code);
+
 	if (!npt_enabled && kvm_event_needs_reinjection(&svm->vcpu))
 		kvm_mmu_unprotect_page_virt(&svm->vcpu, fault_address);
 	return (kvm_mmu_page_fault(&svm->vcpu, fault_address, error_code));
@@ -1624,11 +1623,9 @@ invlpga_interception(struct vcpu_svm *svm)
 {
 	struct kvm_vcpu *vcpu = &svm->vcpu;
 
-#if 0
-	trace_kvm_invlpga(svm->vmcb->save.rip, vcpu->arch.regs[VCPU_REGS_RCX],
-			  vcpu->arch.regs[VCPU_REGS_RAX]);
-#endif
-	/* XXX insert dtrace */
+	KVM_TRACE3(svm__invlpga, uint64_t, svm->vmcb->save.rip,
+	    uint64_t, vcpu->arch.regs[VCPU_REGS_RCX],
+	    uint64_t, vcpu->arch.regs[VCPU_REGS_RAX]);
 
 	/* Let's treat INVLPGA the same as INVLPG (can be optimized!) */
 	kvm_mmu_invlpg(vcpu, vcpu->arch.regs[VCPU_REGS_RAX]);
@@ -1641,10 +1638,8 @@ invlpga_interception(struct vcpu_svm *svm)
 static int
 skinit_interception(struct vcpu_svm *svm)
 {
-#if 0
-	trace_kvm_skinit(svm->vmcb->save.rip, svm->vcpu.arch.regs[VCPU_REGS_RAX]);
-#endif
-	/* XXX insert dtrace KVM_TRACE1 business here */
+	KVM_TRACE2(svm__skinit, uint64_t, svm->vmcb->save.rip,
+	    uint64_t, svm->vcpu.arch.regs[VCPU_REGS_RAX]);
 
 	kvm_queue_exception(&svm->vcpu, UD_VECTOR);
 	return (1);
@@ -1836,16 +1831,11 @@ rdmsr_interception(struct vcpu_svm *svm)
 	uint64_t data;
 
 	if (svm_get_msr(&svm->vcpu, ecx, &data)) {
-#if 0
-		 trace_kvm_msr_read_ex(ecx);
-#endif
-		/* XXX insert dtrace */
+		KVM_TRACE1(msr__read__ex, uint32_t, ecx);
+
 		kvm_inject_gp(&svm->vcpu, 0);
 	} else {
-#if 0
-		trace_kvm_msr_read(ecx, data);
-#endif
-		/* XXX insert dtrace */
+		KVM_TRACE2(msr__read, uint32_t, ecx, uint64_t, data);
 
 		svm->vcpu.arch.regs[VCPU_REGS_RAX] = data & 0xffffffff;
 		svm->vcpu.arch.regs[VCPU_REGS_RDX] = data >> 32;
@@ -1933,16 +1923,12 @@ wrmsr_interception(struct vcpu_svm *svm)
 
 	svm->next_rip = kvm_rip_read(&svm->vcpu) + 2;
 	if (svm_set_msr(&svm->vcpu, ecx, data)) {
-#if 0
-		trace_kvm_msr_write_ex(ecx, data);
-#endif
-		/* XXX insert dtrace */
+		KVM_TRACE2(msr__write__ex, uint32_t, ecx, uint64_t, data);
+
 		kvm_inject_gp(&svm->vcpu, 0);
 	} else {
-#if 0
-		trace_kvm_msr_write(ecx, data);
-#endif
-		/* XXX insert dtrace */
+		KVM_TRACE2(msr__write, uint32_t, ecx, uint64_t, data);
+
 		skip_emulated_instruction(&svm->vcpu);
 	}
 	return (1);
@@ -2120,10 +2106,11 @@ handle_exit(struct kvm_vcpu *vcpu)
 
 /* ROGER */
 
-#if 0
-	trace_kvm_exit(exit_code, svm->vmcb->save.rip);
-#endif
-	/* XXX insert dtrace here */
+	/* XXX is "svm->vmcb->save.rip" the GUEST RIP?  If not...o
+	    replace it with something that is, a la
+	    vmcs_readl(GUEST_RIP). */
+	KVM_TRACE2(vexit, unsigned long, svm->vmcb->save.rip,
+	    uint32_t, exit_code);
 
 	svm_complete_interrupts(svm);
 
@@ -2205,8 +2192,7 @@ svm_inject_irq(struct vcpu_svm *svm, int irq)
 {
 	struct vmcb_control_area *control;
 
-	/* XXX: dtrace
-	    trace_kvm_inj_virq(irq); */
+	KVM_TRACE1(inj__virq, int, irq);
 
 	/* XXX: stats
 	    ++svm->vcpu.stat.irq_injections; */
@@ -2436,6 +2422,8 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	uint16_t fs_selector;
 	uint16_t gs_selector;
 	uint16_t ldt_selector;
+
+	KVM_TRACE1(vrun, unsigned long, vcpu->arch.regs[VCPU_REGS_RIP]);
 
 	svm->vmcb->save.rax = vcpu->arch.regs[VCPU_REGS_RAX];
 	svm->vmcb->save.rsp = vcpu->arch.regs[VCPU_REGS_RSP];
