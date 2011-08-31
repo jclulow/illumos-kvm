@@ -866,7 +866,9 @@ svm_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 		/* kvm_migrate_timers(vcpu); */
 		svm->asid_generation = 0;
 
-		/* XXX per-cpu TSS/GDT/IDT/GSBASE ? */
+		/* XXX per-cpu TSS/GDT/IDT/GSBASE is, I believe,
+		 * taken care of mostly by the VMRUN instruction
+		 * but also by save/load behaviour in vcpu_run. */
 
 		/*
 		 * Make sure the time stamp counter is monotonic.
@@ -1214,18 +1216,6 @@ svm_guest_debug(struct kvm_vcpu *vcpu, struct kvm_guest_debug *dbg)
 		svm->vmcb->save.dr7 = vcpu->arch.dr7;
 
 	update_db_intercept(vcpu);
-}
-
-static void
-load_host_msrs(struct kvm_vcpu *vcpu)
-{
-	wrmsrl(MSR_GS_BASE, to_svm(vcpu)->host_gs_base);
-}
-
-static void
-save_host_msrs(struct kvm_vcpu *vcpu)
-{
-	rdmsrl(MSR_GS_BASE, to_svm(vcpu)->host_gs_base);
 }
 
 static void
@@ -2152,7 +2142,7 @@ native_load_tr_desc(void)
 #define load_TR_desc() native_load_tr_desc()
 
 static void
-reload_tss(/*struct kvm_vcpu *vcpu*/void)
+reload_tss(void)
 {
 	struct descriptor_table gdt;
 	struct desc_struct *descs;
@@ -2422,6 +2412,7 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	uint16_t fs_selector;
 	uint16_t gs_selector;
 	uint16_t ldt_selector;
+	int i;
 
 	KVM_TRACE1(vrun, unsigned long, vcpu->arch.regs[VCPU_REGS_RIP]);
 
@@ -2433,7 +2424,17 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 
 	sync_lapic_to_cr8(vcpu);
 
-	save_host_msrs(vcpu);
+	/* We are, here, saving:
+         *  FS, GS, GS_BASE, and LDTR.
+	 *
+         * The VMRUN instruction will save, and then
+         * load on #VMEXIT, these:
+         *  ES, CS, SS, DS, GDTR, IDTR, EFER,
+         *  CR0, CR3, CR4, RFLAGS, RIP, RSP, RAX.
+         *      (from AMD Secure Virtual Machine
+	 *       Architecture Reference Manual)
+         */
+	rdmsrl(MSR_GS_BASE, svm->host_gs_base);
 	fs_selector = kvm_read_fs();
 	gs_selector = kvm_read_gs();
 	ldt_selector = kvm_read_ldt();
@@ -2442,15 +2443,18 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	if (npt_enabled)
 		svm->vmcb->save.cr3 = vcpu->arch.cr3;
 
-	clgi();
+	/* XXX Should this be here, or not really? */
+	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
+		rdmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
+	}
+
+	clgi(); /* XXX is this good enough to prevent revectoring? */
 
 	/* XXX what is this for
 	   local_irq_enable(); */
 	/* maybe sti() would work instead? */
 
 	__asm__ volatile (
-		"push %%rcx; \n\t"
-		"mov  %%cr2,%%rcx; \n\t"
 		"push %%rcx; \n\t"
 		"push %%rbp; \n\t"
 		"mov %c[rbx](%[svm]), %%rbx \n\t"
@@ -2493,8 +2497,6 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 		"mov %%r15, %c[r15](%[svm]) \n\t"
 		"pop %%rbp \n\t"
 		"pop %%rcx \n\t"
-		"mov %%rcx,%%cr2; \n\t"
-		"pop %%rcx \n\t"
 		:
 		: [svm]"a"(svm),
 		  [vmcb]"i"(offsetof(struct vcpu_svm, vmcb_pa)),
@@ -2525,9 +2527,14 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	kvm_load_fs(fs_selector);
 	kvm_load_gs(gs_selector);
 	kvm_load_ldt(ldt_selector);
-	load_host_msrs(vcpu);
+	wrmsrl(MSR_GS_BASE, svm->host_gs_base);
 
-	reload_tss(/*vcpu*/);
+	/* XXX should this be here, or not really? */
+	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
+		wrmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
+	}
+
+	reload_tss();
 
 	/* XXX what is this for
 	    local_irq_disable(); */
