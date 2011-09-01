@@ -2679,7 +2679,7 @@ __kvm_mmu_free_some_pages(struct kvm_vcpu *vcpu)
 	    !list_is_empty(&vcpu->kvm->arch.active_mmu_pages)) {
 		struct kvm_mmu_page *sp;
 
-		sp = list_remove_tail(&vcpu->kvm->arch.active_mmu_pages);
+		sp = list_tail(&vcpu->kvm->arch.active_mmu_pages);
 		kvm_mmu_zap_page(vcpu->kvm, sp);
 		KVM_KSTAT_INC(vcpu->kvm, kvmks_mmu_recycled);
 	}
