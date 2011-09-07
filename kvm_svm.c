@@ -2450,9 +2450,10 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 
 	clgi(); /* XXX is this good enough to prevent revectoring? */
 
-	/* XXX what is this for
-	   local_irq_enable(); */
-	/* maybe sti() would work instead? */
+	/* XXX in linux, we local_irq_enable()ed.
+	 *  need to understand why, and if sti() is
+	 *  sufficient. */
+	sti();
 
 	__asm__ volatile (
 		"push %%rcx; \n\t"
@@ -2536,9 +2537,10 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 
 	reload_tss();
 
-	/* XXX what is this for
-	    local_irq_disable(); */
-	/* maybe cli() would work instead? */
+	/* XXX in linux, we local_irq_disable()ed.
+	 *  need to understand why, and if cli() is
+	 *  sufficient. */
+	cli();
 
 	stgi();
 
@@ -2551,6 +2553,18 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 		vcpu->arch.regs_dirty &= ~(1 << VCPU_EXREG_PDPTR);
 	}
 
+	/* XXX in a tight polling loop of a real mode guest
+	 *  where we can service all intercepts within the
+	 *  kernel, we'll do so forever.  We don't get
+	 *  preempted for other threads of priority
+	 *  lower than kpreemptpri, which seems to include
+         *  things like the mac workers.  Until illumos
+	 *  includes a kthread_t flag allowing us to
+	 *  nominate ourselves for preemption based purely
+	 *  on relative priorities, fudge attention from
+	 *  the dispatcher: */
+	CPU->cpu_kprunrun = 1;
+	membar_enter();
 }
 
 static void
