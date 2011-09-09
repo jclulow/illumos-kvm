@@ -706,8 +706,7 @@ kvm_mmu_free_page(struct kvm *kvm, struct kvm_mmu_page *sp)
 	avl_remove(&kvm->kvm_avlmp, sp);
 	mutex_exit(&kvm->kvm_avllock);
 	list_remove(&kvm->arch.active_mmu_pages, sp);
-	if (sp)
-		kmem_cache_free(mmu_page_header_cache, sp);
+	kmem_cache_free(mmu_page_header_cache, sp);
 	++kvm->arch.n_free_mmu_pages;
 }
 
@@ -1456,8 +1455,10 @@ kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 
 	for (sp = list_head(bucket); sp; sp = list_next(bucket, sp)) {
 		if (sp->gfn == gfn && !sp->role.direct) {
+			struct kvm_mmu_page *nsp = list_next(bucket, sp);
 			r = 1;
 			kvm_mmu_zap_page(kvm, sp);
+			sp = nsp;
 		}
 	}
 	return (r);
@@ -2599,7 +2600,9 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 			 * forking, in which case it is better to unmap the
 			 * page.
 			 */
+			struct kvm_mmu_page *nsp = list_next(bucket, sp);
 			kvm_mmu_zap_page(vcpu->kvm, sp);
+			sp = nsp;
 			KVM_KSTAT_INC(vcpu->kvm, kvmks_mmu_flooded);
 			continue;
 		}
