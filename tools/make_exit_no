@@ -1,0 +1,19 @@
+#!/bin/ksh
+
+grep SVM_EXIT_ kvm_svm.h |
+while read A B C
+do
+  echo "inline int $B = $C;"
+done
+
+echo
+echo "inline string strexitno[int32_t r] ="
+grep SVM_EXIT_ kvm_svm.h |
+while read A B C
+do
+  X=$(echo "$B" | sed 's/SVM_EXIT_//')
+  echo "   r == $B ? \"$X\" :"
+done
+echo "   \"<unknown>\";"
+echo
+
