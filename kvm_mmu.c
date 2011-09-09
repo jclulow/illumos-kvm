@@ -951,7 +951,7 @@ typedef struct kvm_mmu_pages {
 
 #define	for_each_unsync_children(bitmap, idx)		\
 	for (idx = bt_getlowbit(bitmap, 0, 512);	\
-	    idx < 512;					\
+	    (idx != -1) && (idx < 512);			\
 	    idx = bt_getlowbit(bitmap, idx+1, 512))
 
 static int
@@ -1006,7 +1006,7 @@ __mmu_unsync_walk(struct kvm_mmu_page *sp, struct kvm_mmu_pages *pvec,
 		}
 	}
 
-	if (bt_getlowbit(sp->unsync_child_bitmap, 0, 512) == 512)
+	if (bt_getlowbit(sp->unsync_child_bitmap, 0, 512) == -1)
 		sp->unsync_children = 0;
 
 	return (nr_unsync_leaf);
