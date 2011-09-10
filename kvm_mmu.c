@@ -340,8 +340,7 @@ mmu_alloc_pte_chain(struct kvm_vcpu *vcpu)
 static void
 mmu_free_pte_chain(struct kvm_pte_chain *pc)
 {
-	if (pc)
-		kmem_cache_free(pte_chain_cache, pc);
+	kmem_cache_free(pte_chain_cache, pc);
 }
 
 static struct kvm_rmap_desc *
@@ -354,8 +353,7 @@ mmu_alloc_rmap_desc(struct kvm_vcpu *vcpu)
 static void
 mmu_free_rmap_desc(struct kvm_rmap_desc *rd)
 {
-	if (rd)
-		kmem_cache_free(rmap_desc_cache, rd);
+	kmem_cache_free(rmap_desc_cache, rd);
 }
 
 /*
