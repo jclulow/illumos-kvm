@@ -1444,19 +1444,20 @@ kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 {
 	unsigned index;
 	list_t *bucket;
-	struct kvm_mmu_page *sp;
+	struct kvm_mmu_page *sp, *nsp = NULL;
 	int r;
 
 	r = 0;
 	index = kvm_page_table_hashfn(gfn);
 	bucket = &kvm->arch.mmu_page_hash[index];
 
-	for (sp = list_head(bucket); sp; sp = list_next(bucket, sp)) {
+	for (sp = list_head(bucket); sp; sp = nsp) {
+		/* preserve link to next node in case we free this one */
+		nsp = list_next(bucket, sp);
+
 		if (sp->gfn == gfn && !sp->role.direct) {
-			struct kvm_mmu_page *nsp = list_next(bucket, sp);
 			r = 1;
 			kvm_mmu_zap_page(kvm, sp);
-			sp = nsp;
 		}
 	}
 	return (r);
@@ -2544,7 +2545,7 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
     const uint8_t *new, int bytes, int guest_initiated)
 {
 	gfn_t gfn = gpa >> PAGESHIFT;
-	struct kvm_mmu_page *sp;
+	struct kvm_mmu_page *sp, *nsp = NULL;
 	list_t *bucket;
 	unsigned index;
 	uint64_t entry, gentry;
@@ -2580,7 +2581,11 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	index = kvm_page_table_hashfn(gfn);
 	bucket = &vcpu->kvm->arch.mmu_page_hash[index];
 
-	for (sp = list_head(bucket); sp; sp = list_next(bucket, sp)) {
+	for (sp = list_head(bucket); sp; sp = nsp) {
+		/* keep next list node pointer as we may
+		 * free the current one */
+		nsp = list_next(bucket, sp);
+
 		if (sp->gfn != gfn || sp->role.direct || sp->role.invalid)
 			continue;
 
@@ -2598,9 +2603,7 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 			 * forking, in which case it is better to unmap the
 			 * page.
 			 */
-			struct kvm_mmu_page *nsp = list_next(bucket, sp);
 			kvm_mmu_zap_page(vcpu->kvm, sp);
-			sp = nsp;
 			KVM_KSTAT_INC(vcpu->kvm, kvmks_mmu_flooded);
 			continue;
 		}
