@@ -133,12 +133,18 @@ FNAME(walk_addr)(struct guest_walker *walker, struct kvm_vcpu *vcpu,
 	gpa_t pte_gpa;
 	int rsvd_fault = 0;
 
+	KVM_TRACE5(mmu__page__table__walk, uint8_t, PTTYPE,
+	    uint64_t, addr, int, write_fault, int, user_fault,
+	    int, fetch_fault);
+
 walk:
 	walker->level = vcpu->arch.mmu.root_level;
 	pte = vcpu->arch.cr3;
 #if PTTYPE == 64
 	if (!is_long_mode(vcpu)) {
 		pte = kvm_pdptr_read(vcpu, (addr >> 30) & 3);
+		KVM_TRACE3(mmu__paging__element, uint8_t, PTTYPE,
+		    uint64_t, pte, int, walker->level);
 
 		if (!is_present_gpte(pte))
 			goto not_present;
@@ -162,6 +168,9 @@ walk:
 		if (kvm_read_guest(vcpu->kvm, pte_gpa, &pte, sizeof (pte)))
 			goto not_present;
 
+		KVM_TRACE3(mmu__paging__element, uint8_t, PTTYPE,
+		    uint64_t, pte, int, walker->level);
+
 		if (!is_present_gpte(pte))
 			goto not_present;
 
@@ -182,6 +191,9 @@ walk:
 #endif
 
 		if (!(pte & PT_ACCESSED_MASK)) {
+			KVM_TRACE4(mmu__set__accessed__bit, uint8_t, PTTYPE,
+			    uint64_t, table_gfn, uint32_t, index, uint64_t,
+			    sizeof(pte));
 			mark_page_dirty(vcpu->kvm, table_gfn);
 			if (FNAME(cmpxchg_gpte)(vcpu->kvm, table_gfn,
 			    index, pte, pte|PT_ACCESSED_MASK))
@@ -221,6 +233,9 @@ walk:
 	if (write_fault && !is_dirty_gpte(pte)) {
 		int ret;
 
+		KVM_TRACE4(mmu__set__dirty__bit, uint8_t, PTTYPE,
+		    uint64_t, table_gfn, uint32_t, index,
+		    uint64_t, sizeof(pte));
 		mark_page_dirty(vcpu->kvm, table_gfn);
 		ret = FNAME(cmpxchg_gpte)(vcpu->kvm, table_gfn, index, pte,
 			    pte|PT_DIRTY_MASK);
@@ -251,6 +266,8 @@ err:
 	if (rsvd_fault)
 		walker->error_code |= PFERR_RSVD_MASK;
 
+	KVM_TRACE2(mmu__page__table__walk__error, uint8_t, PTTYPE,
+	    uint32_t, walker->error_code);
 	return (0);
 }
 
@@ -263,6 +280,8 @@ FNAME(update_pte)(struct kvm_vcpu *vcpu, struct kvm_mmu_page *page,
 	pfn_t pfn;
 
 	gpte = *(const pt_element_t *)pte;
+	KVM_TRACE4(mmu__update__pte, uint8_t, PTTYPE, uint64_t, page,
+	    uint64_t, gpte, uint64_t, spte);
 	if (~gpte & (PT_PRESENT_MASK | PT_ACCESSED_MASK)) {
 		if (!is_present_gpte(gpte))
 			__set_spte(spte, shadow_notrap_nonpresent_pte);
@@ -302,6 +321,9 @@ static uint64_t *FNAME(fetch)(struct kvm_vcpu *vcpu, gva_t addr,
 	int level;
 	pt_element_t curr_pte;
 	struct kvm_shadow_walk_iterator iterator;
+
+	KVM_TRACE6(mmu__fetch__spte, uint8_t, PTTYPE, uint64_t, addr,
+	    int, user_fault, int, write_fault, int, hlevel, uint64_t, pfn);
 
 	if (!is_present_gpte(gw->ptes[gw->level - 1]))
 		return (NULL);
@@ -421,9 +443,14 @@ FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr,
 	int level = PT_PAGE_TABLE_LEVEL;
 	unsigned long mmu_seq;
 
+	KVM_TRACE3(mmu__page__fault, uint8_t, PTTYPE, uint64_t, addr,
+	    uint32_t, error_code);
+
 	r = mmu_topup_memory_caches(vcpu);
-	if (r)
+	if (r) {
+		KVM_TRACE2(mmu__page__fault__topup, uint8_t, PTTYPE, int, r);
 		return (r);
+	}
 
 	/*
 	 * Look up the guest pte for the faulting address.
@@ -435,6 +462,8 @@ FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr,
 	 * The page is not mapped by the guest.  Let the guest handle it.
 	 */
 	if (!r) {
+		KVM_TRACE3(mmu__page__fault__guest, uint8_t, PTTYPE,
+		    uint64_t, addr, uint32_t, walker.error_code);
 		inject_page_fault(vcpu, addr, walker.error_code);
 		vcpu->arch.last_pt_write_count = 0; /* reset fork detector */
 		return (0);
@@ -449,6 +478,8 @@ FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr,
 
 	/* mmio */
 	if (is_error_pfn(pfn)) {
+		KVM_TRACE3(mmu__page__fault__mmio, uint8_t, PTTYPE,
+		    uint64_t, walker.gfn, uint64_t, pfn);
 		kvm_release_pfn_clean(pfn);
 		return (1);
 	}
@@ -457,6 +488,8 @@ FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr,
 	kvm_mmu_free_some_pages(vcpu);
 	sptep = FNAME(fetch)(vcpu, addr, &walker, user_fault, write_fault,
 	    level, &write_pt, pfn);
+	KVM_TRACE4(mmu__page__fault__fetch, uint8_t, PTTYPE, uint64_t, sptep,
+	    uint64_t, *sptep, int, write_pt);
 
 	if (!write_pt)
 		vcpu->arch.last_pt_write_count = 0; /* reset fork detector */
@@ -465,6 +498,7 @@ FNAME(page_fault)(struct kvm_vcpu *vcpu, gva_t addr,
 
 	return (write_pt);
 
+/* XXX unused code */
 out_unlock:
 	mutex_exit(&vcpu->kvm->mmu_lock);
 	kvm_release_pfn_clean(pfn);
@@ -478,6 +512,8 @@ FNAME(invlpg)(struct kvm_vcpu *vcpu, gva_t gva)
 	int level;
 	uint64_t *sptep;
 	int need_flush = 0;
+
+	KVM_TRACE1(mmu__invalidate__page, uint64_t, gva);
 
 	mutex_enter(&vcpu->kvm->mmu_lock);
 
@@ -525,6 +561,10 @@ FNAME(gva_to_gpa)(struct kvm_vcpu *vcpu, gva_t vaddr, uint32_t access,
 	} else if (error)
 		*error = walker.error_code;
 
+	KVM_TRACE5(mmu__gva__to__gpa, uint8_t, PTTYPE, uint64_t, vaddr,
+	    uint32_t, access, uint32_t, walker.error_code,
+	    uint64_t, gpa);
+
 	return (gpa);
 }
 
@@ -534,6 +574,8 @@ FNAME(prefetch_page)(struct kvm_vcpu *vcpu, struct kvm_mmu_page *sp)
 	int i, j, offset, r;
 	pt_element_t pt[256 / sizeof (pt_element_t)];
 	gpa_t pte_gpa;
+
+	KVM_TRACE1(mmu__prefetch__page, uint64_t, sp);
 
 	if (sp->role.direct ||
 	    (PTTYPE == 32 && sp->role.level > PT_PAGE_TABLE_LEVEL)) {
@@ -569,6 +611,8 @@ FNAME(sync_page)(struct kvm_vcpu *vcpu, struct kvm_mmu_page *sp)
 {
 	int i, offset, nr_present;
 	int reset_host_protection;
+
+	KVM_TRACE1(mmu__sync__page, uint64_t, sp);
 
 	offset = nr_present = 0;
 
