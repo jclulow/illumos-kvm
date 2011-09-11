@@ -1719,7 +1719,8 @@ invlpg_interception(struct vcpu_svm *svm)
 	return (1);
 }
 
-static int emulate_on_interception(struct vcpu_svm *svm)
+static int
+emulate_on_interception(struct vcpu_svm *svm)
 {
 	if (emulate_instruction(&svm->vcpu, 0, 0, 0) != EMULATE_DONE)
 		cmn_err(CE_WARN, "%s: failed\n", __func__);
@@ -2525,7 +2526,14 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	vcpu->arch.regs[VCPU_REGS_RSP] = svm->vmcb->save.rsp;
 	vcpu->arch.regs[VCPU_REGS_RIP] = svm->vmcb->save.rip;
 
+	/* XXX in linux, we local_irq_disable()ed.
+	 *  need to understand why, and if cli() is
+	 *  sufficient. */
+	cli();
+
 	kvm_load_fs(fs_selector);
+	/* NB: we don't want to reload GS with interrupts enabled as
+	   it corrupts GSBASE, which is used by DTrace, et al. */
 	kvm_load_gs(gs_selector);
 	kvm_load_ldt(ldt_selector);
 	wrmsrl(MSR_GS_BASE, svm->host_gs_base);
@@ -2536,11 +2544,6 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	}
 
 	reload_tss();
-
-	/* XXX in linux, we local_irq_disable()ed.
-	 *  need to understand why, and if cli() is
-	 *  sufficient. */
-	cli();
 
 	stgi();
 
