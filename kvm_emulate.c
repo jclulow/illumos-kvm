@@ -2185,6 +2185,26 @@ kvm_emulate_pio_string(struct kvm_vcpu *vcpu, int in, int size,
 }
 
 int
+emulator_get_dr(struct x86_emulate_ctxt *ctxt, int dr, unsigned long *dest)
+{
+	if (!kvm_x86_ops->get_dr)
+		return (-1);
+
+	return (kvm_x86_ops->get_dr(ctxt->vcpu, dr, dest));
+}
+
+int
+emulator_set_dr(struct x86_emulate_ctxt *ctxt, int dr, unsigned long value)
+{
+	unsigned long mask = (ctxt->mode == X86EMUL_MODE_PROT64) ? ~0ULL : ~0U;
+
+	if (!kvm_x86_ops->set_dr)
+		return (-1);
+
+	return (kvm_x86_ops->set_dr(ctxt->vcpu, dr, value & mask));
+}
+
+int
 emulate_clts(struct kvm_vcpu *vcpu)
 {
 	kvm_x86_ops->set_cr0(vcpu, kvm_read_cr0_bits(vcpu, ~X86_CR0_TS));
@@ -2869,13 +2889,9 @@ twobyte_insn:
 	case 0x21: /* mov from dr to reg */
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
-#ifdef XXX
 		rc = emulator_get_dr(ctxt, c->modrm_reg, &c->regs[c->modrm_rm]);
 		if (rc)
 			goto cannot_emulate;
-#else
-		XXX_KVM_PROBE;
-#endif
 		c->dst.type = OP_NONE;	/* no writeback */
 		break;
 	case 0x22: /* mov reg, cr */
@@ -2888,13 +2904,9 @@ twobyte_insn:
 	case 0x23: /* mov from reg to dr */
 		if (c->modrm_mod != 3)
 			goto cannot_emulate;
-#ifdef XXX
 		rc = emulator_set_dr(ctxt, c->modrm_reg, c->regs[c->modrm_rm]);
 		if (rc)
 			goto cannot_emulate;
-#else
-		XXX_KVM_PROBE;
-#endif
 		c->dst.type = OP_NONE;	/* no writeback */
 		break;
 	case 0x30:
