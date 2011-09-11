@@ -10,5 +10,5 @@ kvm-xxx
 tick-10sec
 {
 	printf("%-12s %-40s %-8s %8s\n", "FILE", "FUNCTION", "LINE", "COUNT");
-	printa("%20s %8d %@8d\n", @);
+	printa("%-12s %-40s %-8d %@8d\n", @);
 }
