@@ -1393,8 +1393,8 @@ kvm_mmu_zap_page(struct kvm *kvm, struct kvm_mmu_page *sp)
 		kvm_mmu_free_page(kvm, sp);
 	} else {
 		sp->role.invalid = 1;
-		if (!list_link_active(&sp->link))
-			list_insert_head(&kvm->arch.active_mmu_pages, sp);
+		list_remove(&kvm->arch.active_mmu_pages, sp);
+		list_insert_head(&kvm->arch.active_mmu_pages, sp);
 		kvm_reload_remote_mmus(kvm);
 	}
 	kvm_mmu_reset_last_pte_updated(kvm);
@@ -1431,7 +1431,7 @@ kvm_mmu_change_mmu_pages(struct kvm *kvm, unsigned int kvm_nr_mmu_pages)
 			struct kvm_mmu_page *page;
 
 			page = (struct kvm_mmu_page *)
-			    list_head(&kvm->arch.active_mmu_pages);
+			    list_tail(&kvm->arch.active_mmu_pages);
 
 			/* page removed by kvm_mmu_zap_page */
 			used_pages -= kvm_mmu_zap_page(kvm, page);
