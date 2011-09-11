@@ -1,0 +1,117 @@
+Acronyms
+========
+
+pfn   host page frame number
+hpa   host physical address
+hva   host virtual address
+gfn   guest frame number
+gpa   guest physical address
+gva   guest virtual address
+ngpa  nested guest physical address
+ngva  nested guest virtual address
+pte   page table entry (used also to refer generically to paging structure
+      entries)
+gpte  guest pte (referring to gfns)
+spte  shadow pte (referring to pfns)
+tdp   two dimensional paging (vendor neutral term for NPT and EPT)
+
+
+Compare/Exchange Guest Page Table Elements
+==========================================
+
+paging*_cmpxchg_gpte():
+
+  We use gfn_to_page() and then page_address() to obtain a mapping
+  to the actual page table (passed to us as table_gfn).  In our
+  implementation, this uses hat_kpm_mapin_pfn() to get a kpm virtual
+  address to the page in question.
+
+  We use atomic_cas_{32,64}() instead of Linux's cmpxchg{,64}() here.
+  The cas is performed on the passed index into the table page, and
+  then the page is passed to kvm_release_page_dirty().
+
+  **************
+  XXX: in our implementation kvm_release_page_dirty() is a NOP!
+  What are the rules around modifying KPM mappings of pages on
+  x86 systems?
+  **************
+
+  We then return success if cas() did not return the original pte.
+
+
+Walking Guest Page Tables
+=========================
+
+We use the function "walk_addr" to walk guest page tables for
+a particular guest virtual address (gva).
+
+paging*_walk_addr():
+
+  We're passed a gva to look for, and we're told if this is a:
+    * write fault
+    * user fault
+    * fetch fault
+
+Pre-Walk:
+ 
+  For 64bit guests we use the value of CR3 as the address of the root
+  of the page table to walk, which will be the PML4 table[1].
+  For 32bit guests we use kvm_pdptr_read() to get the address from the 
+  PDPTR registers of the guest.  This address is a guest physical
+  address and is stored into "pte" to begin the walk.
+
+  We ASSERT that if we're a 32-bit non-PAE guest, our CR3 doesn't
+  have the non-PAE reserved bits set.
+
+Walking:
+
+  We take the current guest page table element (pte), and convert it to
+  a guest page frame number (gfn) and from that to a guest physical
+  address (gpa).  Once we have the gpa we store the details in the
+  walker struct we were passed.
+
+  We use kvm_read_guest() to read the page table element from the memory
+  of the qemu process into pte.  If this fails we skip out to not_present,
+  and set walker->error_code based on what we were asked to do,
+   e.g. if this was for a write_fault we mask in PFERR_WRITE_MASK.
+
+  We check that the PRESENT bit (bit #0) in the guest pte and if it's
+  not set, we do the same as if we couldn't read the pte.  There are
+  various other checks, including one to see if the gpte
+  we've read is marked ACCESSED -- if it isn't, we use mark_page_dirty()
+  to mark the memslot's dirty bitmap, and then we use our cmpxchg()
+  to set the ACCESSED bit on the guest pte.  If the latter fails, we
+  start walking again from the beginning.
+
+  If we're still OK, we make various determinations about page sizes
+  and page table levels, and either move down to the next level and
+  keep walking or break out because we're done.
+
+Post Walk:
+
+  If it's a write fault, and the guest pte is not marked dirty, we
+  mark it dirty in the memslot bitmap, and then we use our cmpxcgh()
+  to mark the guest pte DIRTY.  If that fails, we start walking again
+  from the beginning.
+
+  From here we return success.
+
+Error Path:
+
+  Unfortunately we don't so much set errors based on what happened,
+  as set errors based on what we were asked to do.  (sort of).
+
+  Either way, if we're going to return an error we fire dtrace probe
+  kvm-mmu-page-table-walk-error here, with the return code.
+
+
+References
+==========
+
+  [1]  AMD64 Architecture Programmer's Manual,
+        Volume 2: System Programming
+
+  [2]  AMD64 Architecture Programmer's Manual,
+        Volume 3: General-Purpose and System Instructions
+
+
