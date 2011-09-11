@@ -6,9 +6,9 @@ load on my HP Microserver, and I can boot an OpenBSD/amd64 4.9 VM.  There are
 remarkably few issues at this stage, but it may set fire to your cat, etc.
 Working on it, testers encouraged!
 
-The kstats stuff is not done yet.  I am probably over-preserving state
-before/after a VMRUN/#VMEXIT in the name of stability-over-performance.  Will
-correct in time.
+I am probably over-preserving state before/after a VMRUN/#VMEXIT in the name
+of stability-over-performance.  We still do not work without Nested Paging
+(NPT) support in the CPU.  Will correct in time.
 
   -- Joshua M. Clulow (freenode: LeftWing)
      <josh@sysmgr.org>

@@ -891,8 +891,8 @@ svm_vcpu_put(struct kvm_vcpu *vcpu)
 	struct vcpu_svm *svm = to_svm(vcpu);
 	int i;
 
-	/* XXX: Where are the stats?
-	    ++vcpu->stat.host_state_reload; */
+	KVM_VCPU_KSTAT_INC(vcpu, kvmvs_host_state_reload);
+
 	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
 		wrmsrl(host_save_user_msrs[i], svm->host_user_msrs[i]);
 	}
@@ -1425,8 +1425,7 @@ io_interception(struct vcpu_svm *svm)
 	int size, in, string;
 	unsigned port;
 
-	/* XXX: where are the stats?
-	    ++svm->vcpu.stat.io_exits; */
+	KVM_VCPU_KSTAT_INC(&svm->vcpu, kvmvs_io_exits);
 
 	svm->next_rip = svm->vmcb->control.exit_info_2;
 
@@ -1456,8 +1455,7 @@ nmi_interception(struct vcpu_svm *svm)
 static int
 intr_interception(struct vcpu_svm *svm)
 {
-	/* XXX: stats
-	    ++svm->vcpu.stat.irq_exits; */
+	KVM_VCPU_KSTAT_INC(&svm->vcpu, kvmvs_irq_exits);
 	return (1);
 }
 
@@ -1704,8 +1702,8 @@ cpuid_interception(struct vcpu_svm *svm)
 static int
 iret_interception(struct vcpu_svm *svm)
 {
-	/* XXX: stats
-	    ++svm->vcpu.stat.nmi_window_exits; */
+	KVM_VCPU_KSTAT_INC(&svm->vcpu, kvmvs_nmi_window_exits);
+
 	svm->vmcb->control.intercept &= ~(1ULL << INTERCEPT_IRET);
 	svm->vcpu.arch.hflags |= HF_IRET_MASK;
 	return (1);
@@ -1948,8 +1946,8 @@ interrupt_window_interception(struct vcpu_svm *svm)
 	if (!irqchip_in_kernel(svm->vcpu.kvm) &&
 	    kvm_run->request_interrupt_window &&
 	    !kvm_cpu_has_interrupt(&svm->vcpu)) {
-		/* XXX: stats
-		    ++svm->vcpu.stat.irq_window_exits; */
+		KVM_VCPU_KSTAT_INC(&svm->vcpu, kvmvs_irq_window_exits);
+
 		kvm_run->exit_reason = KVM_EXIT_IRQ_WINDOW_OPEN;
 		return (0);
 	}
@@ -2175,7 +2173,8 @@ svm_inject_nmi(struct kvm_vcpu *vcpu)
 	svm->vmcb->control.event_inj = SVM_EVTINJ_VALID | SVM_EVTINJ_TYPE_NMI;
 	vcpu->arch.hflags |= HF_NMI_MASK;
 	svm->vmcb->control.intercept |= (1ULL << INTERCEPT_IRET);
-	/* XXX FIND: ++vcpu->stat.nmi_injections; */
+
+	KVM_VCPU_KSTAT_INC(vcpu, kvmvs_nmi_injections);
 }
 
 static void
@@ -2185,8 +2184,8 @@ svm_inject_irq(struct vcpu_svm *svm, int irq)
 
 	KVM_TRACE1(inj__virq, int, irq);
 
-	/* XXX: stats
-	    ++svm->vcpu.stat.irq_injections; */
+	KVM_VCPU_KSTAT_INC(&svm->vcpu, kvmvs_irq_injections);
+
 	control = &svm->vmcb->control;
 	control->int_vector = irq;
 	control->int_ctl &= ~V_INTR_PRIO_MASK;
