@@ -2153,7 +2153,6 @@ static void
 paging_new_cr3(struct kvm_vcpu *vcpu)
 {
 	KVM_TRACE1(mmu__paging__new__cr3, uint64_t, vcpu->arch.cr3);
-	cmn_err(CE_NOTE, "%s: cr3 %lx\n", __func__, vcpu->arch.cr3);
 	mmu_free_roots(vcpu);
 }
 

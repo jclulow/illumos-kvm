@@ -1252,12 +1252,12 @@ kvm_set_msr_common(struct kvm_vcpu *vcpu, uint32_t msr, uint64_t data)
 		if (msr && (msr == vcpu->kvm->arch.xen_hvm_config.msr))
 			return (xen_hvm_config(vcpu, data));
 		if (!ignore_msrs) {
-			cmn_err(CE_NOTE, "unhandled wrmsr: 0x%x data %lx\n",
-				msr, data);
+			KVM_TRACE2(msr__write__unhandled, uint32_t, msr,
+			    uint64_t, data);
 			return (1);
 		} else {
-			cmn_err(CE_NOTE, "ignored wrmsr: 0x%x data %lx\n",
-				msr, data);
+			KVM_TRACE2(msr__write__ignored, uint32_t, msr,
+			    uint64_t, data);
 			break;
 		}
 	}
@@ -1481,10 +1481,10 @@ kvm_get_msr_common(struct kvm_vcpu *vcpu, uint32_t msr, uint64_t *pdata)
 		break;
 	default:
 		if (!ignore_msrs) {
-			cmn_err(CE_NOTE, "unhandled rdmsr: 0x%x\n", msr);
+			KVM_TRACE1(msr__read__unhandled, uint32_t, msr);
 			return (1);
 		} else {
-			cmn_err(CE_NOTE, "ignored rdmsr: 0x%x\n", msr);
+			KVM_TRACE1(msr__read__ignored, uint32_t, msr)
 			data = 0;
 		}
 		break;
@@ -2596,7 +2596,7 @@ static int
 emulator_cmpxchg_emulated(unsigned long addr, const void *old,
     const void *new, unsigned int bytes, struct kvm_vcpu *vcpu)
 {
-	cmn_err(CE_WARN, "kvm: emulating exchange as write\n");
+	KVM_TRACE2(cmpxchg__emulated, uint64_t, addr, uint32_t, bytes);
 	return (emulator_write_emulated(addr, new, bytes, vcpu));
 }
 
