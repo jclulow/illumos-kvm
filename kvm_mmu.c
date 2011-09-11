@@ -38,7 +38,8 @@
  */
 int tdp_enabled = 0;
 
-static int oos_shadow = 1;
+/* XXX we don't work presently with this on: */
+static int oos_shadow = 0;
 
 #define	virt_to_page(addr) pfn_to_page(hat_getpfnum(kas.a_hat, addr))
 
