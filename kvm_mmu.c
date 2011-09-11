@@ -1176,7 +1176,7 @@ kvm_mmu_get_page(struct kvm_vcpu *vcpu, gfn_t gfn, gva_t gaddr, unsigned level,
 	unsigned index;
 	unsigned quadrant;
 	list_t *bucket;
-	struct kvm_mmu_page *sp;
+	struct kvm_mmu_page *sp, *nsp = NULL;
 	struct hlist_node *node, *tmp;
 
 	role = vcpu->arch.mmu.base_role;
@@ -1193,8 +1193,8 @@ kvm_mmu_get_page(struct kvm_vcpu *vcpu, gfn_t gfn, gva_t gaddr, unsigned level,
 	index = kvm_page_table_hashfn(gfn);
 	bucket = &vcpu->kvm->arch.mmu_page_hash[index];
 
-	for (sp = list_head(bucket); sp != NULL;
-	    sp = list_next(bucket, sp)) {
+	for (sp = list_head(bucket); sp != NULL; sp = nsp) {
+		nsp = list_next(bucket, sp);
 		if (sp->gfn == gfn) {
 			if (sp->unsync)
 				if (kvm_sync_page(vcpu, sp))
