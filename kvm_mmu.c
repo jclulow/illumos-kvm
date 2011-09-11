@@ -697,6 +697,8 @@ rmap_write_protect(struct kvm *kvm, uint64_t gfn)
 static void
 kvm_mmu_free_page(struct kvm *kvm, struct kvm_mmu_page *sp)
 {
+	ASSERT(mutex_owned(&kvm->mmu_lock));
+
 	kmem_free(sp->sptkma, PAGESIZE);
 	kmem_free(sp->gfnskma, PAGESIZE);
 
@@ -726,6 +728,8 @@ kvm_mmu_alloc_page(struct kvm_vcpu *vcpu, uint64_t *parent_pte)
 {
 	struct kvm_mmu_page *sp;
 	struct kvm_objects kobj;
+
+	ASSERT(mutex_owned(&vcpu->kvm->mmu_lock));
 
 	sp = mmu_memory_cache_alloc(&vcpu->arch.mmu_page_header_cache,
 	    sizeof (*sp));
@@ -1368,6 +1372,8 @@ kvm_mmu_zap_page(struct kvm *kvm, struct kvm_mmu_page *sp)
 {
 	int ret;
 
+	ASSERT(mutex_owned(&kvm->mmu_lock));
+
 	ret = mmu_zap_unsync_children(kvm, sp);
 	kvm_mmu_page_unlink_children(kvm, sp);
 	kvm_mmu_unlink_parents(kvm, sp);
@@ -1404,6 +1410,8 @@ void
 kvm_mmu_change_mmu_pages(struct kvm *kvm, unsigned int kvm_nr_mmu_pages)
 {
 	int used_pages;
+
+	ASSERT(mutex_owned(&kvm->mmu_lock));
 
 	used_pages = kvm->arch.n_alloc_mmu_pages - kvm->arch.n_free_mmu_pages;
 	used_pages = MAX(0, used_pages);
@@ -2680,6 +2688,8 @@ kvm_mmu_unprotect_page_virt(struct kvm_vcpu *vcpu, gva_t gva)
 void
 __kvm_mmu_free_some_pages(struct kvm_vcpu *vcpu)
 {
+	ASSERT(mutex_owned(&vcpu->kvm->mmu_lock));
+
 	while (vcpu->kvm->arch.n_free_mmu_pages < KVM_REFILL_PAGES &&
 	    !list_is_empty(&vcpu->kvm->arch.active_mmu_pages)) {
 		struct kvm_mmu_page *sp;
@@ -2849,6 +2859,8 @@ void
 kvm_mmu_slot_remove_write_access(struct kvm *kvm, int slot)
 {
 	struct kvm_mmu_page *sp;
+
+	ASSERT(mutex_owned(&kvm->mmu_lock));
 
 	for (sp = list_head(&kvm->arch.active_mmu_pages);
 	    sp != NULL; sp = list_next(&kvm->arch.active_mmu_pages, sp)) {
