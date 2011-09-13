@@ -38,8 +38,7 @@
  */
 int tdp_enabled = 0;
 
-/* XXX we don't work presently with this on: */
-static int oos_shadow = 0;
+static int oos_shadow = 1;
 
 #define	virt_to_page(addr) pfn_to_page(hat_getpfnum(kas.a_hat, addr))
 
@@ -2612,7 +2611,13 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 			 * forking, in which case it is better to unmap the
 			 * page.
 			 */
-			kvm_mmu_zap_page(vcpu->kvm, sp);
+			if (kvm_mmu_zap_page(vcpu->kvm, sp)) {
+				/* kvm_mmu_zap_page freed page(s)
+				 * from somewhere in the list, so
+				 * start walking again from the head.
+				 */
+				nsp = list_head(bucket);
+			}
 			KVM_KSTAT_INC(vcpu->kvm, kvmks_mmu_flooded);
 			continue;
 		}
