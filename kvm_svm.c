@@ -600,13 +600,6 @@ svm_hardware_unsetup(void)
 
 	for (cpu = 0; cpu < ncpus; cpu++) {
 		svm_cpu_uninit(cpu);
-		if (kvm_svm_cpu_data[cpu] != NULL) {
-			kmem_cache_free(kvm_svm_cpudata_cache,
-			    kvm_svm_cpu_data[cpu]);
-			kvm_svm_cpu_data[cpu] = NULL;
-		} else {
-			cmn_err(CE_NOTE, "kvm: cpu %d had null cpu_data\n", cpu);
-		}
 	}
 
 	kmem_cache_free(kvm_svm_iopm_cache, iopm_va);
