@@ -1465,7 +1465,8 @@ kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 
 		if (sp->gfn == gfn && !sp->role.direct) {
 			r = 1;
-			kvm_mmu_zap_page(kvm, sp);
+			if (kvm_mmu_zap_page(kvm, sp))
+				nsp = list_head(bucket);
 		}
 	}
 	return (r);
@@ -2896,15 +2897,13 @@ kvm_mmu_zap_all(struct kvm *kvm)
 	 * So we hold onto the next element before zapping.
 	 */
 	mutex_enter(&kvm->mmu_lock);
-	sp = list_head(&kvm->arch.active_mmu_pages);
-	if (sp)
+
+	for (sp = list_head(&kvm->arch.active_mmu_pages);
+	     sp != NULL; sp = nsp) {
 		nsp = list_next(&kvm->arch.active_mmu_pages, sp);
 
-	while (sp) {
-		(void) kvm_mmu_zap_page(kvm, sp);
-		sp = nsp;
-		if (sp)
-			nsp = list_next(&kvm->arch.active_mmu_pages, sp);
+		if (kvm_mmu_zap_page(kvm, sp))
+			nsp = list_head(&kvm->arch.active_mmu_pages);
 	}
 
 	mutex_exit(&kvm->mmu_lock);
