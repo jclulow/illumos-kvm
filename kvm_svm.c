@@ -392,7 +392,6 @@ has_svm(void)
 static void
 svm_hardware_disable(void *garbage)
 {
-	cmn_err(CE_NOTE, "KVM: svm_hardware_disable\n");
 	cpu_svm_disable();
 }
 
@@ -405,8 +404,6 @@ svm_hardware_enable(void *garbage)
 	/*struct descriptor_table gdt;
 	struct desc_struct *descs;*/
 	int cpu = curthread->t_cpu->cpu_seqid;
-
-	cmn_err(CE_NOTE, "KVM: svm_hardware_enable\n");
 
 	rdmsrl(MSR_EFER, efer);
 	if (efer & EFER_SVME)
@@ -580,18 +577,15 @@ svm_hardware_setup(void)
 	}
 
 	svm_features = cpuid_edx(SVM_CPUID_FUNC);
-	cmn_err(CE_NOTE, "kvm: svm_features = %x\n", svm_features);
 
 	if (!svm_has(SVM_FEATURE_NPT))
 		npt_enabled = 0;
 
 	if (npt_enabled && !npt) {
-		cmn_err(CE_NOTE, "Nested Paging disabled\n");
 		npt_enabled = 0;
 	}
 
 	if (npt_enabled) {
-		cmn_err(CE_NOTE, "Nested Paging enabled\n");
 		kvm_enable_tdp();
 	} else
 		kvm_disable_tdp();
