@@ -2392,6 +2392,19 @@ native_read_cr8(void)
         return (val);
 }
 
+/*
+ * Between the load of GS and the load of GSBASE, GSBASE is esentially
+ * corrupt, and any references to it toxic.  Unfortunately, this will include
+ * any DTrace probes.  Do the whole set in one, inline, operation so that
+ * there cannot be intervening probes.
+ */
+#define SET_GS_GSBASE(gs, gsbase)					     \
+	do {								     \
+		__asm__ __volatile__("mov %0, %%gs" : : "rm"(gs));	     \
+		__asm__ __volatile__("wrmsr" : : "c" (MSR_GS_BASE),	     \
+		    "a" ((uint32_t)gsbase), "d" ((uint32_t)(gsbase >> 32))); \
+	} while(0)
+
 static void
 svm_vcpu_run(struct kvm_vcpu *vcpu)
 {
@@ -2517,12 +2530,9 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 	 *  sufficient. */
 	cli();
 
-	kvm_load_fs(fs_selector);
-	/* NB: we don't want to reload GS with interrupts enabled as
-	   it corrupts GSBASE, which is used by DTrace, et al. */
-	kvm_load_gs(gs_selector);
+	SET_GS_GSBASE(gs_selector, svm->host_gs_base);
 	kvm_load_ldt(ldt_selector);
-	wrmsrl(MSR_GS_BASE, svm->host_gs_base);
+	kvm_load_fs(fs_selector);
 
 	/* XXX should this be here, or not really? */
 	for (i = 0; i < NR_HOST_SAVE_USER_MSRS; i++) {
