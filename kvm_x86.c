@@ -937,8 +937,22 @@ set_msr_mce(struct kvm_vcpu *vcpu, uint32_t msr, uint64_t data)
 	case MSR_IA32_MCG_CTL:
 		if (!(mcg_cap & MCG_CTL_P))
 			return (1);
+                /*
+                 * XXX: The SunOS AMD CPU specific module only puts 1 bits in
+                 * the MCG for banks which exist in the system, failing this
+                 * test for no good reason.  Userland appears to treat this as
+                 * 0 if it's not all 1's, but that seems no reason to #GP the
+                 * guest...
+                 *
+                 * This is a hack to prevent DEBUG kernels trapping to their
+                 * doom (this, followed by an unaligned trap stack).
+                 */
+#if XXX
 		if (data != 0 && data != ~(uint64_t)0)
 			return (-1);
+#else
+                XXX_KVM_PROBE
+#endif
 		vcpu->arch.mcg_ctl = data;
 		break;
 	default:
