@@ -2770,44 +2770,63 @@ static struct kvm_x86_ops svm_x86_ops = {
 int
 kvm_svm_init(void)
 {
-	int r;
+	int r = ENOMEM;
 	
 	kvm_svm_vcpu_cache = kmem_cache_create("kvm_svm_vcpu",
 	    sizeof (struct vcpu_svm), PAGESIZE, zero_constructor,
 	    NULL, NULL, (void *)(sizeof (struct vcpu_svm)),
 	    NULL, 0);
-	/* JMC: NB: VMRUN requires VMCBs (which are 4K)
-	    to be aligned on 4kb boundaries */
+	if (kvm_svm_vcpu_cache == NULL)
+		goto failclean;
+
+	/*
+	 * NB: VMRUN requires VMCBs (which are 4KB)
+	 * to be aligned on 4KB boundaries
+	 */
 	kvm_svm_vmcb_cache = kmem_cache_create("kvm_svm_vmcb",
 	    sizeof (struct vmcb), SVM_ALLOC_VMCB_ALIGN,
 	    zero_constructor, NULL, NULL,
 	    (void *)(sizeof (struct vmcb)), NULL, 0);
+	if (kvm_svm_vmcb_cache == NULL)
+		goto failclean;
+
 	kvm_svm_msrpm_cache = kmem_cache_create("kvm_svm_msrpm",
 	    SVM_ALLOC_MSRPM_SIZE, SVM_ALLOC_MSRPM_ALIGN,
 	    zero_constructor, NULL, NULL,
 	    (void *)SVM_ALLOC_MSRPM_SIZE, NULL, 0);
+	if (kvm_svm_msrpm_cache == NULL)
+		goto failclean;
+
 	kvm_svm_savearea_cache = kmem_cache_create("kvm_svm_savearea",
 	    sizeof (struct svm_cpu_data), PAGESIZE,
 	    zero_constructor, NULL, NULL,
 	    (void *)(sizeof (struct svm_cpu_data)), NULL, 0);
+	if (kvm_svm_savearea_cache == NULL)
+		goto failclean;
+
 	kvm_svm_cpudata_cache = kmem_cache_create("kvm_svm_cpudata",
 	    PAGESIZE, PAGESIZE,
 	    zero_constructor, NULL, NULL,
 	    (void *)PAGESIZE, NULL, 0);
-
-	/* XXX should really check all of the above for NULL */
-	if (kvm_svm_vcpu_cache == NULL) {
-		return (ENOMEM);
-	}
+	if (kvm_svm_cpudata_cache == NULL)
+		goto failclean;
 
 	r = kvm_init(&svm_x86_ops);
-	if (r) {
+	if (!r)
+		return (0);
+
+failclean:
+	if (kvm_svm_savearea_cache)
 		kmem_cache_destroy(kvm_svm_savearea_cache);
+	if (kvm_svm_cpudata_cache)
 		kmem_cache_destroy(kvm_svm_cpudata_cache);
+	if (kvm_svm_vmcb_cache)
 		kmem_cache_destroy(kvm_svm_vmcb_cache);
+	if (kvm_svm_msrpm_cache)
 		kmem_cache_destroy(kvm_svm_msrpm_cache);
+	if (kvm_svm_vcpu_cache)
 		kmem_cache_destroy(kvm_svm_vcpu_cache);
-	}
+
 	return (r);
 }
 
