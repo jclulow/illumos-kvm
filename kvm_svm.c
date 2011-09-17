@@ -22,6 +22,8 @@
 #include <asm/cpu.h>
 #include <sys/x86_archext.h>
 #include <sys/xc_levels.h>
+#include <sys/ddi.h>
+#include <sys/sunddi.h>
 
 #include "kvm_bitops.h"
 #include "kvm_msr.h"
@@ -43,7 +45,6 @@
 static kmem_cache_t *kvm_svm_vcpu_cache;
 static kmem_cache_t *kvm_svm_vmcb_cache;
 static kmem_cache_t *kvm_svm_msrpm_cache;
-static kmem_cache_t *kvm_svm_iopm_cache;
 static kmem_cache_t *kvm_svm_cpudata_cache;
 static kmem_cache_t *kvm_svm_savearea_cache;
 
@@ -537,19 +538,43 @@ svm_disable_lbrv(struct vcpu_svm *svm)
 	set_msr_interception(msrpm, MSR_IA32_LASTINTTOIP, 0, 0);
 }
 
+/* XXX: Lies */
+static ddi_dma_attr_t iopm_dma_attr = {
+ 	DMA_ATTR_V0,		/* version of this structure */
+ 	0,			/* lowest usable address */
+ 	0xffffffffffffffffULL,	/* highest usable address */
+ 	0x7fffffff,		/* maximum DMAable byte count */
+ 	SVM_ALLOC_IOPM_ALIGN,   /* alignment in bytes */
+ 	0x7ff,			/* burst sizes (any?) */
+ 	1,			/* minimum transfer */
+ 	0xffffffffU,		/* maximum transfer */
+ 	0xffffffffffffffffULL,	/* maximum segment length */
+ 	1,			/* maximum number of segments */
+ 	1,			/* granularity */
+ 	DDI_DMA_FLAGERR,	/* dma_attr_flags */
+};
+
+/* XXX: This is a mess */
+extern void *contig_alloc(size_t, ddi_dma_attr_t *, uintptr_t, int);
+extern void contig_free(void *, size_t);
+
 static int
 svm_hardware_setup(void)
 {
 	int cpu;
 	int r, i;
+        size_t iopm_length;
 
-	iopm_va = kmem_cache_alloc(kvm_svm_iopm_cache, KM_SLEEP);
-	if (!iopm_va)
+	/* XXX: We should be using i_ddi_mem_alloc() to the same end */
+	iopm_va = contig_alloc(SVM_ALLOC_IOPM_SIZE, &iopm_dma_attr,
+	    SVM_ALLOC_IOPM_ALIGN, 1);
+
+	if (iopm_va == NULL) {
+		cmn_err(CE_WARN, "SVM: Failed to allocate contiguous memory");
 		return (ENOMEM);
+	}
 
 	memset(iopm_va, 0xff, SVM_ALLOC_IOPM_SIZE);
-	
-
 	iopm_base = kvm_va2pa((caddr_t)iopm_va);
 
 	if (is_x86_feature(x86_featureset, X86FSET_NX))
@@ -569,7 +594,7 @@ svm_hardware_setup(void)
 	for (i = 0; i < ncpus; i++) {
 		r = svm_cpu_init(i);
 		if (r) {
-			kmem_cache_free(kvm_svm_iopm_cache, iopm_va);
+			contig_free(iopm_va, SVM_ALLOC_IOPM_SIZE);
 			iopm_base = 0;
 			iopm_va = NULL;
 			return (r);
@@ -602,7 +627,7 @@ svm_hardware_unsetup(void)
 		svm_cpu_uninit(cpu);
 	}
 
-	kmem_cache_free(kvm_svm_iopm_cache, iopm_va);
+	contig_free(iopm_va, SVM_ALLOC_IOPM_SIZE);
 	iopm_base = 0;
 	iopm_va = NULL;
 }
@@ -2761,10 +2786,6 @@ kvm_svm_init(void)
 	    SVM_ALLOC_MSRPM_SIZE, SVM_ALLOC_MSRPM_ALIGN,
 	    zero_constructor, NULL, NULL,
 	    (void *)SVM_ALLOC_MSRPM_SIZE, NULL, 0);
-	kvm_svm_iopm_cache = kmem_cache_create("kvm_svm_iopm",
-	    SVM_ALLOC_IOPM_SIZE, SVM_ALLOC_IOPM_ALIGN,
-	    zero_constructor, NULL, NULL,
-	    (void *)SVM_ALLOC_IOPM_SIZE, NULL, 0);
 	kvm_svm_savearea_cache = kmem_cache_create("kvm_svm_savearea",
 	    sizeof (struct svm_cpu_data), PAGESIZE,
 	    zero_constructor, NULL, NULL,
@@ -2783,7 +2804,6 @@ kvm_svm_init(void)
 	if (r) {
 		kmem_cache_destroy(kvm_svm_savearea_cache);
 		kmem_cache_destroy(kvm_svm_cpudata_cache);
-		kmem_cache_destroy(kvm_svm_iopm_cache);
 		kmem_cache_destroy(kvm_svm_vmcb_cache);
 		kmem_cache_destroy(kvm_svm_msrpm_cache);
 		kmem_cache_destroy(kvm_svm_vcpu_cache);
@@ -2796,7 +2816,6 @@ kvm_svm_fini(void)
 {
 	kmem_cache_destroy(kvm_svm_savearea_cache);
 	kmem_cache_destroy(kvm_svm_cpudata_cache);
-	kmem_cache_destroy(kvm_svm_iopm_cache);
 	kmem_cache_destroy(kvm_svm_vmcb_cache);
 	kmem_cache_destroy(kvm_svm_msrpm_cache);
 	kmem_cache_destroy(kvm_svm_vcpu_cache);
