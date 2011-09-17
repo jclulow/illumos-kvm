@@ -16,6 +16,7 @@
  * the COPYING file in the top-level directory.
  *
  * Copyright 2011 Joyent, Inc. All rights reserved.
+ * Copyright 2011 Joshua M. Clulow <josh@sysmgr.org>
  */
 #include <sys/sysmacros.h>
 #include <sys/atomic.h>
@@ -193,7 +194,7 @@ walk:
 		if (!(pte & PT_ACCESSED_MASK)) {
 			KVM_TRACE4(mmu__set__accessed__bit, uint8_t, PTTYPE,
 			    uint64_t, table_gfn, uint32_t, index, uint64_t,
-			    sizeof(pte));
+			    sizeof (pte));
 			mark_page_dirty(vcpu->kvm, table_gfn);
 			if (FNAME(cmpxchg_gpte)(vcpu->kvm, table_gfn,
 			    index, pte, pte|PT_ACCESSED_MASK))
@@ -235,7 +236,7 @@ walk:
 
 		KVM_TRACE4(mmu__set__dirty__bit, uint8_t, PTTYPE,
 		    uint64_t, table_gfn, uint32_t, index,
-		    uint64_t, sizeof(pte));
+		    uint64_t, sizeof (pte));
 		mark_page_dirty(vcpu->kvm, table_gfn);
 		ret = FNAME(cmpxchg_gpte)(vcpu->kvm, table_gfn, index, pte,
 			    pte|PT_DIRTY_MASK);

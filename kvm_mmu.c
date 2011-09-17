@@ -18,6 +18,8 @@
  *
  * Copyright 2011 various Linux Kernel contributors.
  * Copyright 2011 Joyent, Inc. All Rights Reserved.
+ * Copyright 2011 Joshua M. Clulow <josh@sysmgr.org>
+ * Copyright 2011 Richard Lowe
  */
 
 #include <sys/sysmacros.h>
@@ -2591,8 +2593,10 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	bucket = &vcpu->kvm->arch.mmu_page_hash[index];
 
 	for (sp = list_head(bucket); sp; sp = nsp) {
-		/* keep next list node pointer as we may
-		 * free the current one */
+		/*
+		 * Keep next list node pointer as we may
+		 * free the current one.
+		 */
 		nsp = list_next(bucket, sp);
 
 		if (sp->gfn != gfn || sp->role.direct || sp->role.invalid)
@@ -2613,7 +2617,8 @@ kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 			 * page.
 			 */
 			if (kvm_mmu_zap_page(vcpu->kvm, sp)) {
-				/* kvm_mmu_zap_page freed page(s)
+				/*
+				 * kvm_mmu_zap_page freed page(s)
 				 * from somewhere in the list, so
 				 * start walking again from the head.
 				 */
@@ -2899,7 +2904,7 @@ kvm_mmu_zap_all(struct kvm *kvm)
 	mutex_enter(&kvm->mmu_lock);
 
 	for (sp = list_head(&kvm->arch.active_mmu_pages);
-	     sp != NULL; sp = nsp) {
+	    sp != NULL; sp = nsp) {
 		nsp = list_next(&kvm->arch.active_mmu_pages, sp);
 
 		if (kvm_mmu_zap_page(kvm, sp))
