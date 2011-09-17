@@ -7,8 +7,7 @@ remarkably few issues at this stage, but it may set fire to your cat, etc.
 Working on it, testers encouraged!
 
 I am probably over-preserving state before/after a VMRUN/#VMEXIT in the name
-of stability-over-performance.  We still do not work without Nested Paging
-(NPT) support in the CPU.  Will correct in time.
+of stability-over-performance.
 
   -- Joshua M. Clulow (freenode: LeftWing)
      <josh@sysmgr.org>
