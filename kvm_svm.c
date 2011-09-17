@@ -1864,12 +1864,8 @@ svm_set_msr(struct kvm_vcpu *vcpu, unsigned ecx, uint64_t data)
 		svm->vmcb->save.sysenter_esp = data;
 		break;
 	case MSR_IA32_DEBUGCTLMSR:
-		if (!svm_has(SVM_FEATURE_LBRV)) {
-			cmn_err(CE_WARN,
-			    "%s: MSR_IA32_DEBUGCTL 0x%llx, nop\n",
-			    __func__, (long long unsigned)data);
+		if (!svm_has(SVM_FEATURE_LBRV))
 			break;
-		}
 		if (data & DEBUGCTL_RESERVED_BITS)
 			return (1);
 
