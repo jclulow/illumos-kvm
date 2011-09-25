@@ -2575,21 +2575,6 @@ svm_vcpu_run(struct kvm_vcpu *vcpu)
 		vcpu->arch.regs_avail &= ~(1 << VCPU_EXREG_PDPTR);
 		vcpu->arch.regs_dirty &= ~(1 << VCPU_EXREG_PDPTR);
 	}
-
-	/*
-	 * XXX in a tight polling loop of a real mode guest
-	 * where we can service all intercepts within the
-	 * kernel, we'll do so forever.  We don't get
-	 * preempted for other threads of priority
-	 * lower than kpreemptpri, which seems to include
-	 * things like the mac workers.  Until illumos
-	 * includes a kthread_t flag allowing us to
-	 * nominate ourselves for preemption based purely
-	 * on relative priorities, fudge attention from
-	 * the dispatcher:
-	 */
-	CPU->cpu_kprunrun = 1;
-	membar_enter();
 }
 
 static void

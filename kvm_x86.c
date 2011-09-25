@@ -3547,6 +3547,19 @@ __vcpu_run(struct kvm_vcpu *vcpu)
 		if (r <= 0)
 			break;
 
+		/*
+		 * If the CPU has been flagged for preemption, exit to userland
+		 * to allow it to happen
+		 */
+		if (CPU->cpu_runrun || CPU->cpu_kprunrun) {
+			r = 0;
+			KVM_TRACE3(vcpu__run, char *, __FILE__, int, __LINE__,
+			    uint64_t, vcpu);
+			vcpu->run->exit_reason = KVM_EXIT_INTR;
+			KVM_VCPU_KSTAT_INC(vcpu, kvmvs_preempt_exits);
+			break;
+		}
+
 		clear_bit(KVM_REQ_PENDING_TIMER, &vcpu->requests);
 		if (kvm_cpu_has_pending_timer(vcpu)) {
 			KVM_TRACE3(vcpu__run, char *, __FILE__, int, __LINE__,
@@ -4641,6 +4654,7 @@ kvm_arch_vcpu_create(struct kvm *kvm, unsigned int id)
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_irq_window_exits, "irq-window-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_request_irq_exits, "request-irq-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_signal_exits, "signal-exits");
+	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_preempt_exits, "preempt-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_halt_wakeup, "halt-wakeup");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_invlpg, "invlpg");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_pf_guest, "pf-guest");

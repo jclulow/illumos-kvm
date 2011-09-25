@@ -3200,6 +3200,11 @@ handle_exception(struct kvm_vcpu *vcpu)
 static int
 handle_external_interrupt(struct kvm_vcpu *vcpu)
 {
+	/*
+	 * XXX should remove the runrun checks from
+	 * this function and test on intel, now
+	 * that the same handling is in kvm_x86
+	 */
 	KVM_VCPU_KSTAT_INC(vcpu, kvmvs_irq_exits);
 	if (CPU->cpu_runrun || CPU->cpu_kprunrun) {
 		vcpu->run->exit_reason = KVM_EXIT_INTR;
