@@ -32,6 +32,7 @@
  */
 extern int vmx_init(void);
 extern void vmx_fini(void);
+extern int vmx_supported(void);
 
 /*
  * Definitions of Primary Processor-Based VM-Execution Controls.

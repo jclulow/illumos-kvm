@@ -937,8 +937,22 @@ set_msr_mce(struct kvm_vcpu *vcpu, uint32_t msr, uint64_t data)
 	case MSR_IA32_MCG_CTL:
 		if (!(mcg_cap & MCG_CTL_P))
 			return (1);
+		/*
+		 * XXX: The SunOS AMD CPU specific module only puts 1 bits in
+		 * the MCG for banks which exist in the system, failing this
+		 * test for no good reason.  Userland appears to treat this as
+		 * 0 if it's not all 1's, but that seems no reason to #GP the
+		 * guest...
+		 *
+		 * This is a hack to prevent DEBUG kernels trapping to their
+		 * doom (this, followed by an unaligned trap stack).
+		 */
+#if XXX
 		if (data != 0 && data != ~(uint64_t)0)
 			return (-1);
+#else
+		XXX_KVM_PROBE
+#endif
 		vcpu->arch.mcg_ctl = data;
 		break;
 	default:
@@ -3552,6 +3566,19 @@ __vcpu_run(struct kvm_vcpu *vcpu)
 		if (r <= 0)
 			break;
 
+		/*
+		 * If the CPU has been flagged for preemption, exit to userland
+		 * to allow it to happen.
+		 */
+		if (CPU->cpu_runrun || CPU->cpu_kprunrun) {
+			r = 0;
+			KVM_TRACE3(vcpu__run, char *, __FILE__, int, __LINE__,
+			    uint64_t, vcpu);
+			vcpu->run->exit_reason = KVM_EXIT_INTR;
+			KVM_VCPU_KSTAT_INC(vcpu, kvmvs_preempt_exits);
+			break;
+		}
+
 		clear_bit(KVM_REQ_PENDING_TIMER, &vcpu->requests);
 		if (kvm_cpu_has_pending_timer(vcpu)) {
 			KVM_TRACE3(vcpu__run, char *, __FILE__, int, __LINE__,
@@ -4645,6 +4672,7 @@ kvm_arch_vcpu_create(struct kvm *kvm, unsigned int id)
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_irq_window_exits, "irq-window-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_request_irq_exits, "request-irq-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_signal_exits, "signal-exits");
+	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_preempt_exits, "preempt-exits");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_halt_wakeup, "halt-wakeup");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_invlpg, "invlpg");
 	KVM_VCPU_KSTAT_INIT(vcpu, kvmvs_pf_guest, "pf-guest");

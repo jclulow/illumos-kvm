@@ -4672,3 +4672,9 @@ vmx_fini(void)
 	}
 	kmem_cache_destroy(kvm_vcpu_cache);
 }
+
+int
+vmx_supported(void)
+{
+	return (vmx_has_kvm_support() == 0);
+}

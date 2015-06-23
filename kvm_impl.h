@@ -78,6 +78,7 @@ typedef struct kvm_vcpu_stats {
 	kstat_named_t kvmvs_irq_window_exits;	/* exits due to IRQ window */
 	kstat_named_t kvmvs_request_irq_exits;	/* exits due to requested IRQ */
 	kstat_named_t kvmvs_signal_exits;	/* exits due to pending sig */
+	kstat_named_t kvmvs_preempt_exits;	/* exits due to preemption */
 	kstat_named_t kvmvs_halt_wakeup;	/* wakeups from HLT */
 	kstat_named_t kvmvs_invlpg;		/* INVLPG instructions */
 	kstat_named_t kvmvs_pf_guest;		/* injected guest pagefaults */

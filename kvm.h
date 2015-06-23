@@ -426,6 +426,16 @@ typedef struct kvm_clock_data {
 } kvm_clock_data_t;
 
 /*
+ * For hardware providers (VMX, SVM) to provide a uniform set of initialisation
+ * routines.
+ */
+typedef struct kvm_provider_ops {
+	int	(*provider_init)(void);
+	void	(*provider_fini)(void);
+	int	(*provider_supported)(void);
+} kvm_provider_ops_t;
+
+/*
  * ioctls for VM fds
  */
 
