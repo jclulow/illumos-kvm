@@ -23,8 +23,8 @@
  * Use is subject to license terms.
  */
 
+#include <mdb/mdb_param.h>
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/uio.h>
 #include <sys/buf.h>
