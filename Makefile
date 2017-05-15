@@ -1,24 +1,189 @@
 #
-# Copyright (c) 2010 Joyent Inc., All Rights Reserved.
+# Copyright 2015 Joyent, Inc.
 #
 
-# Use the gcc compiler and Sun linker.
-KERNEL_SOURCE=/ws/illumos-gate
-PROTO_AREA=/ws/illumos-kvm-proto
-GCC=/usr/sfw/bin/gcc
-CC=$(GCC) -m64 -mcmodel=kernel -msave-args
-LD=/usr/bin/ld
-CTFBINDIR=$(KERNEL_SOURCE)/usr/src/tools/proto/*/opt/onbld/bin/i386
-CTFCONVERT=$(CTFBINDIR)/ctfconvert
-CTFMERGE=$(CTFBINDIR)/ctfmerge
-DESTDIR=
-CFLAGS += -D_KERNEL -D_MACHDEP -Dx86 -DDEBUG -c -g -DCONFIG_SOLARIS -O2 -fident -fno-inline -fno-inline-functions -fno-builtin -fno-asm -nodefaultlibs -D__sun -O -D_ASM_INLINES -ffreestanding -Wall -Wno-unknown-pragmas -Wpointer-arith -Wno-unused -gdwarf-2 -std=gnu99 -fno-dwarf2-indirect-strings -Werror -DDIS_MEM -D_KERNEL -ffreestanding -D_SYSCALL32 -D_DDI_STRICT -Di86pc -D_MACHDEP -DOPTERON_ERRATUM_88 -DOPTERON_ERRATUM_91 -DOPTERON_ERRATUM_93 -DOPTERON_ERRATUM_95 -DOPTERON_ERRATUM_99 -DOPTERON_ERRATUM_100 -DOPTERON_ERRATUM_101 -DOPTERON_ERRATUM_108 -DOPTERON_ERRATUM_109 -DOPTERON_ERRATUM_121 -DOPTERON_ERRATUM_122 -DOPTERON_ERRATUM_123 -DOPTERON_ERRATUM_131 -DOPTERON_WORKAROUND_6336786 -DOPTERON_WORKAROUND_6323525 -DOPTERON_ERRATUM_172 -DOPTERON_ERRATUM_298 -I$(KERNEL_SOURCE)/usr/src/uts/common -nostdinc -c -DUTS_RELEASE="5.11" -DUTS_VERSION="joyent.147" -DUTS_PLATFORM="i86pc" -mno-red-zone
+KERNEL_SOURCE =	$(PWD)/../../illumos
+MDB_SOURCE =	$(KERNEL_SOURCE)/usr/src/cmd/mdb
+PROTO_AREA =	$(PWD)/../../../proto
+STRAP_AREA =	$(PWD)/../../../proto.strap
 
-INCLUDEDIR= -I $(KERNEL_SOURCE)/usr/src/uts/intel -I $(KERNEL_SOURCE)/usr/src/uts/i86pc -I $(KERNEL_SOURCE)/usr/src/uts/common
-CSTYLE=$(KERNEL_SOURCE)/usr/src/tools/scripts/cstyle
-HDRCHK=tools/hdrchk
-HDRCHK_USRFLAG="$(GCC)"
-HDRCHK_SYSFLAG="$(GCC) -D_KERNEL"
+CC =		$(STRAP_AREA)/usr/bin/gcc
+LD =		/usr/bin/ld
+CTFBINDIR =	$(KERNEL_SOURCE)/usr/src/tools/proto/*/opt/onbld/bin/i386
+CTFCONVERT =	$(CTFBINDIR)/ctfconvert
+CTFMERGE =	$(CTFBINDIR)/ctfmerge
+CSTYLE =	$(KERNEL_SOURCE)/usr/src/tools/scripts/cstyle
+HDRCHK =	tools/hdrchk
+HDRCHK_USRFLAG =	"$(CC)"
+HDRCHK_SYSFLAG =	"$(CC) -D_KERNEL"
+
+ALWAYS_CPPFLAGS = \
+	-D__sun
+
+KERNEL_CPPFLAGS = \
+	$(ALWAYS_CPPFLAGS) \
+	-D_KERNEL \
+	-D_MACHDEP \
+	-Dx86 \
+	-DDEBUG \
+	-DCONFIG_SOLARIS \
+	-D_ASM_INLINES \
+	-DDIS_MEM \
+	-D_KERNEL \
+	-D_SYSCALL32 \
+	-D_DDI_STRICT \
+	-Di86pc \
+	-D_MACHDEP \
+	-DOPTERON_ERRATUM_88 \
+	-DOPTERON_ERRATUM_91 \
+	-DOPTERON_ERRATUM_93 \
+	-DOPTERON_ERRATUM_95 \
+	-DOPTERON_ERRATUM_99 \
+	-DOPTERON_ERRATUM_100 \
+	-DOPTERON_ERRATUM_101 \
+	-DOPTERON_ERRATUM_108 \
+	-DOPTERON_ERRATUM_109 \
+	-DOPTERON_ERRATUM_121 \
+	-DOPTERON_ERRATUM_122 \
+	-DOPTERON_ERRATUM_123 \
+	-DOPTERON_ERRATUM_131 \
+	-DOPTERON_WORKAROUND_6336786 \
+	-DOPTERON_WORKAROUND_6323525 \
+	-DOPTERON_ERRATUM_172 \
+	-DOPTERON_ERRATUM_298 \
+	-DUTS_RELEASE="5.11" \
+	-DUTS_VERSION="joyent.147" \
+	-DUTS_PLATFORM="i86pc" \
+	-nostdinc \
+	-I$(KERNEL_SOURCE)/usr/src/uts/common \
+	-I$(KERNEL_SOURCE)/usr/src/uts/intel \
+	-I$(KERNEL_SOURCE)/usr/src/uts/i86pc
+
+DMOD_CPPFLAGS = \
+	$(ALWAYS_CPPFLAGS) \
+	-D_KERNEL \
+	-DTEXT_DOMAIN="SUNW_OST_OSCMD" \
+	-D_TS_ERRNO \
+	-D_ELF64 \
+	-Ui386 \
+	-U__i386 \
+	-isystem $(PROTO_AREA)/usr/include \
+	-I$(KERNEL_SOURCE)/usr/src/uts/common \
+	-I$(KERNEL_SOURCE)/usr/src/uts/intel \
+	-I$(KERNEL_SOURCE)/usr/src/uts/i86pc \
+	-I$(MDB_SOURCE)/common
+
+LINKMOD_CPPFLAGS = \
+	$(ALWAYS_CPPFLAGS) \
+	-DTEXT_DOMAIN="SUNW_OST_OSCMD" \
+	-D_TS_ERRNO \
+	-isystem $(PROTO_AREA)/usr/include \
+	-I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/ \
+	-I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../../uts/common \
+	-I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../modload
+
+ALWAYS_CFLAGS = \
+	-fident \
+	-fno-builtin \
+	-fno-asm \
+	-nodefaultlibs \
+	-Wall \
+	-Wno-unknown-pragmas \
+	-Wno-unused \
+	-Werror \
+	-fno-inline-functions
+
+#
+# Replacing -O with -O2 causes the KVM host to panic.  Don't do that.
+#
+KERNEL_CFLAGS = \
+	$(ALWAYS_CFLAGS) \
+	-m64 \
+	-mcmodel=kernel \
+	-g \
+	-O \
+	-fno-inline \
+	-ffreestanding \
+	-fno-strict-aliasing \
+	-Wpointer-arith \
+	-gdwarf-2 \
+	-std=gnu99 \
+	-mno-red-zone
+
+USER_CFLAGS = \
+	-finline \
+	-gdwarf-2 \
+	-std=gnu89 \
+	-Wno-missing-braces \
+	-Wno-sign-compare \
+	-Wno-parentheses \
+	-Wno-uninitialized \
+	-Wno-implicit-function-declaration \
+	-Wno-trigraphs \
+	-Wno-char-subscripts \
+	-Wno-switch
+
+DMOD_CFLAGS = \
+	$(ALWAYS_CFLAGS) \
+	$(USER_CFLAGS) \
+	-m64 \
+	-fno-strict-aliasing \
+	-fno-unit-at-a-time \
+	-fno-optimize-sibling-calls \
+	-O2 \
+	-fno-inline-small-functions \
+	-fno-inline-functions-called-once \
+	-mtune=opteron \
+	-Wno-address \
+	-ffreestanding \
+	-fPIC
+
+LINKMOD_CFLAGS = \
+	$(ALWAYS_CFLAGS) \
+	$(USER_CFLAGS) \
+	-O \
+	-fpic
+
+USER_LDFLAGS = \
+	-Wl,-Bdirect \
+	-Wl,-zfatal-warnings \
+	-Wl,-zassert-deflib \
+	-Wl,-zguidance
+
+DMOD_LDFLAGS = \
+	$(USER_LDFLAGS) \
+	-m64 \
+	-shared \
+	-nodefaultlibs \
+	-std=gnu89 \
+	-Wl,-M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.pagealign \
+	-Wl,-M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.noexdata \
+	-Wl,-ztext \
+	-Wl,-zdefs \
+	-Wl,-zignore \
+	-Wl,-M$(MDB_SOURCE)/common/modules/conf/mapfile-extern \
+	-L$(PROTO_AREA)/lib \
+	-L$(PROTO_AREA)/usr/lib
+
+DMOD_LIBS = \
+	-lc
+
+LINKMOD_LDFLAGS = \
+	$(USER_LDFLAGS) \
+	-shared \
+	-nodefaultlibs \
+	-Wl,-zdefs \
+	-Wl,-ztext \
+	-Wl,-M$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/mapfile-vers \
+	-Wl,-M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.pagealign \
+	-Wl,-M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.noexdata \
+	-h JOY_kvm_link.so \
+	-L$(PROTO_AREA)/lib \
+	-L$(PROTO_AREA)/usr/lib \
+
+LINKMOD_LIBS = \
+	-ldevinfo \
+	-lc
 
 HEADERS=			\
 	kvm.h			\
@@ -71,53 +236,74 @@ HDRCHK_SYSHDRS=			\
 	kvm_x86host.h		\
 	kvm_x86impl.h
 
+KMOD_SRCS =			\
+	kvm.c			\
+	kvm_x86.c		\
+	kvm_emulate.c		\
+	kvm_irq.c		\
+	kvm_i8254.c		\
+	kvm_lapic.c		\
+	kvm_mmu.c		\
+	kvm_iodev.c		\
+	kvm_ioapic.c		\
+	kvm_vmx.c		\
+	kvm_svm.c		\
+	kvm_glue_alloc.c	\
+	kvm_i8259.c		\
+	kvm_coalesced_mmio.c	\
+	kvm_irq_comm.c		\
+	kvm_cache_regs.c
+
+DMOD_SRCS = \
+	kvm_mdb.c
+
+LINKMOD_SRCS = \
+	kvm_link.c
+
+CSTYLE_CHK = \
+	$(KMOD_SRCS:%=%.chk) \
+	$(DMOD_SRCS:%=%.chk) \
+	$(LINKMOD_SRCS:%=%.chk) \
+	$(HEADERS:%=%.chk)
+
+XXX_CHK = \
+	$(KMOD_SRCS:%=%.xxxchk)
+
+USR_HDRCHK =	$(HDRCHK_USRHDRS:%=%.uhdrchk)
+SYS_HDRCHK =	$(HDRCHK_SYSHDRS:%=%.shdrchk)
+
+KMOD_OBJS =	$(KMOD_SRCS:%.c=%.o)
+DMOD_OBJS =	$(DMOD_SRCS:%.c=%.o)
+LINKMOD_OBJS =	$(LINKMOD_SRCS:%.c=%.o)
+
+kvm :	CPPFLAGS =	$(KERNEL_CPPFLAGS)
+kvm :	CFLAGS =	$(KERNEL_CFLAGS)
+
+kvm.so :	CPPFLAGS =	$(DMOD_CPPFLAGS)
+kvm.so :	CFLAGS =	$(DMOD_CFLAGS)
+kvm.so :	LDFLAGS =	$(DMOD_LDFLAGS)
+kvm.so :	LIBS =		$(DMOD_LIBS)
+
+JOY_kvm_link.so :	CPPFLAGS =	$(LINKMOD_CPPFLAGS)
+JOY_kvm_link.so :	CFLAGS =	$(LINKMOD_CFLAGS)
+JOY_kvm_link.so :	LDFLAGS =	$(LINKMOD_LDFLAGS)
+JOY_kvm_link.so :	LIBS =		$(LINKMOD_LIBS)
+
 world: kvm kvm.so JOY_kvm_link.so
 
-kvm: kvm.c kvm_x86.c kvm_emulate.c kvm_irq.c kvm_i8254.c kvm_lapic.c kvm_mmu.c kvm_iodev.c kvm_ioapic.c kvm_vmx.c kvm_svm.c kvm_glue_alloc.c kvm_i8259.c kvm_coalesced_mmio.c kvm_irq_comm.c kvm_cache_regs.c kvm_bitops.c $(HEADERS)
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_x86.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_emulate.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_irq.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_i8254.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_lapic.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_mmu.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_iodev.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_ioapic.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_vmx.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_svm.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_glue_alloc.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_i8259.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_coalesced_mmio.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_irq_comm.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_cache_regs.c
-	$(CC) $(CFLAGS) $(INCLUDEDIR) kvm_bitops.c
-	$(CTFCONVERT) -i -L VERSION kvm.o
-	$(CTFCONVERT) -i -L VERSION kvm_x86.o
-	$(CTFCONVERT) -i -L VERSION kvm_emulate.o
-	$(CTFCONVERT) -i -L VERSION kvm_irq.o
-	$(CTFCONVERT) -i -L VERSION kvm_i8254.o
-	$(CTFCONVERT) -i -L VERSION kvm_lapic.o
-	$(CTFCONVERT) -i -L VERSION kvm_mmu.o
-	$(CTFCONVERT) -i -L VERSION kvm_iodev.o
-	$(CTFCONVERT) -i -L VERSION kvm_ioapic.o
-	$(CTFCONVERT) -i -L VERSION kvm_vmx.o
-	$(CTFCONVERT) -i -L VERSION kvm_svm.o
-	$(CTFCONVERT) -i -L VERSION kvm_glue_alloc.o
-	$(CTFCONVERT) -i -L VERSION kvm_i8259.o
-	$(CTFCONVERT) -i -L VERSION kvm_coalesced_mmio.o
-	$(CTFCONVERT) -i -L VERSION kvm_irq_comm.o
-	$(CTFCONVERT) -i -L VERSION kvm_cache_regs.o
-	$(CTFCONVERT) -i -L VERSION kvm_bitops.o
-	$(LD) -r -o kvm kvm.o kvm_x86.o kvm_emulate.o kvm_irq.o kvm_i8254.o kvm_lapic.o kvm_mmu.o kvm_iodev.o kvm_ioapic.o kvm_vmx.o kvm_svm.o kvm_glue_alloc.o kvm_i8259.o kvm_coalesced_mmio.o kvm_irq_comm.o kvm_cache_regs.o kvm_bitops.o
-	$(CTFMERGE) -L VERSION -o kvm kvm.o kvm_x86.o kvm_emulate.o kvm_irq.o kvm_i8254.o kvm_lapic.o kvm_mmu.o kvm_iodev.o kvm_ioapic.o kvm_vmx.o kvm_svm.o kvm_glue_alloc.o kvm_i8259.o kvm_coalesced_mmio.o kvm_irq_comm.o kvm_cache_regs.o kvm_bitops.o
+kvm: $(KMOD_OBJS)
+	$(LD) -r -o $@ $(KMOD_OBJS)
+	$(CTFMERGE) -L VERSION -o $@ $(KMOD_OBJS)
 
-kvm.so: kvm_mdb.c
-	$(GCC) -m64 -shared \
-	    -fPIC $(CFLAGS) $(INCLUDEDIR) -I/usr/include -o $@ kvm_mdb.c
+kvm.so: $(DMOD_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(DMOD_OBJS) $(LIBS)
 
-JOY_kvm_link.so: kvm_link.c
-	/opt/SUNWspro/bin/cc -O -xspace -Xa  -xildoff -errtags=yes -errwarn=%all -erroff=E_EMPTY_TRANSLATION_UNIT -erroff=E_STATEMENT_NOT_REACHED -xc99=%none    -W0,-xglobalstatic -v -K pic -DTEXT_DOMAIN=\"SUNW_OST_OSCMD\" -D_TS_ERRNO -D_POSIX_PTHREAD_SEMANTICS -D_REENTRANT -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/ -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../../uts/common -I$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/../modload -c -o  kvm_link.o kvm_link.c		
-	/opt/SUNWspro/bin/cc -o JOY_kvm_link.so -G -ztext -zdefs -Bdirect -M$(KERNEL_SOURCE)/usr/src/cmd/devfsadm/mapfile-vers -M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.pagealign -M$(KERNEL_SOURCE)/usr/src/common/mapfiles/common/map.noexdata -h JOY_kvm_link.so kvm_link.o -L$(PROTO_AREA)/lib -L$(PROTO_AREA)/usr/lib -ldevinfo -lc
+JOY_kvm_link.so: $(LINKMOD_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(LINKMOD_OBJS) $(LIBS)
+
+%.o: %.c $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+	$(CTFCONVERT) -i -L VERSION $@
 
 install: world
 	@echo "==> Installing kvm module (to $(DESTDIR)/)"
@@ -126,13 +312,22 @@ install: world
 	@cp kvm.conf $(DESTDIR)/usr/kernel/drv
 	@mkdir -p $(DESTDIR)/usr/lib/mdb/kvm/amd64
 	@cp kvm.so $(DESTDIR)/usr/lib/mdb/kvm/amd64
+	@mkdir -p $(DESTDIR)/usr/lib/devfsadm/linkmod
 	@cp JOY_kvm_link.so $(DESTDIR)/usr/lib/devfsadm/linkmod
 
-check:
-	@$(CSTYLE) kvm.c kvm_mdb.c kvm_emulate.c kvm_x86.c kvm_irq.c kvm_lapic.c kvm_i8254.c kvm_mmu.c kvm_iodev.c kvm_ioapic.c kvm_vmx.c kvm_svm.c kvm_glue_alloc.c kvm_i8259.c kvm_coalesced_mmio.c kvm_irq_comm.c kvm_cache_regs.c kvm_bitops.c $(HEADERS) kvm_link.c
-	@./tools/xxxcheck kvm_x86.c kvm.c kvm_irq.c kvm_lapic.c kvm_i8254.c kvm_mmu.c kvm_iodev.c kvm_ioapic.c kvm_vmx.c kvm_svm.c kvm_glue_alloc.c kvm_i8259.c kvm_coalesced_mmio.c kvm_irq_comm.c kvm_cache_regs.c kvm_bitops.c
-	@$(HDRCHK) $(HDRCHK_USRFLAG) $(HDRCHK_USRHDRS)
-	@$(HDRCHK) $(HDRCHK_SYSFLAG) $(HDRCHK_SYSHDRS)
+check: $(CSTYLE_CHK) $(XXX_CHK) $(USR_HDRCHK) $(SYS_HDRCHK)
+
+%.chk: %
+	$(CSTYLE) $<
+
+%.xxxchk: %
+	./tools/xxxcheck $<
+
+%.uhdrchk: %
+	$(HDRCHK) $(HDRCHK_USRFLAG) $<
+
+%.shdrchk: %
+	$(HDRCHK) $(HDRCHK_SYSFLAG) $<
 
 update:
 	git pull --rebase
@@ -140,11 +335,13 @@ update:
 clean:
 	@pfexec rm -f *.o kvm kvm.so JOY_kvm_link.so
 
+.PHONY: manifest
 manifest:
 	cp manifest $(DESTDIR)/$(DESTNAME)
+
+.PHONY: mancheck_conf
+mancheck_conf:
 
 uninstall:
 	@pfexec rem_drv kvm || /bin/true
 	@pfexec rm -f /usr/kernel/drv/kvm* /usr/kernel/drv/amd64/kvm*
-
-.PHONY: manifest 
